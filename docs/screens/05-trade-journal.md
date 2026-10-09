@@ -94,3 +94,8 @@ TJ01 desktop 1440px en mobiel 320/375px conform spec. TJ02 alle vijf navigatieta
 
 ## 12. Open punten vóór bouw
 Datamodel voor journal↔ledger-allocatie, DEGIRO import mapping, attachmentopslag en retentie, privacyverwijderbeleid, accountauth, exacte statistiekdrempels, auditlog-backup en visual mock-ups. Geen echte gebruikersreview of implementatie wordt geclaimd.
+
+## Aanvulling v1.1 — USD-resultaat en EUR-context
+- Journal toont per trade **gerealiseerde P&L in USD**, met optionele **indicatieve EUR-tegenwaarde**; expliciet onderscheid tussen gerealiseerde handelswinst, waarderingseffect van FX en daadwerkelijke valutawissel.
+- Portfolio-brede samenvatting mag '€ 30.000 / $ 33.000' uitsluitend als gelabelde, gesynchroniseerde waardering tonen, niet als twee verschillende vermogensbedragen optellen. Historische FX-methodiek bij rendementsrapportages vermelden.
+- Global search vindt ticker, eigen plannen en journal-items alleen met user-scoped autorisatie; bel opent meldingen en gekoppeld plan, nooit verouderde quote als live.
