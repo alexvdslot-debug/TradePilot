@@ -162,3 +162,36 @@ Bij iedere toestand zijn loading, aria-live melding, herstelactie en toegestane 
 - G07 reduced-motion, focus en screenreader werken.
 - G08 Search en Bell hebben echte datakoppelingen, empty/error/loading en browsernavigatie.
 - G09 screenshots en browser-E2E moeten deze eisen nog bewijzen; de specificatie zelf is geen bewijs van implementatie.
+
+
+## Aanvulling v1.2 — openingsbeleving en dynamische functies (9 oktober 2026)
+
+### Persoonlijke begroeting
+De dashboardheader toont bij ingelogde gebruikers een persoonlijke begroeting met de **ingestelde weergavenaam**, niet met een hardcoded naam. Op basis van de lokale tijdzone van de gebruiker: 05:00–11:59 'Goedemorgen', 12:00–17:59 'Goedemiddag', 18:00–22:59 'Goedenavond', 23:00–04:59 'Goedenacht'. Bijvoorbeeld 'Goedenavond, Alexander'. Bij ontbrekende naam 'Goedenavond'. De begroeting actualiseert bij openen, hervatten van de app, terugkeer naar het tabblad en overgang naar een volgend dagdeel; vermijd achtergrondpolling. Instelbare taal en tijdzone, geen locatiepermissie vereist. Tijdzones via Intl.DateTimeFormat en IANA-zone, niet op basis van vaste UTC-offsets.
+
+### Marktstatus: echt tijd- en kalendergestuurd
+Marktstatus is een afzonderlijk component, niet een statische badge. Gebruik **America/New_York** en een onderhouden NYSE/Nasdaq-handelskalender inclusief weekends, beursfeestdagen, vervroegde sluitingen en DST. Reguliere sessie doorgaans 09:30–16:00 ET; premarket/after-hours alleen tonen wanneer de dataprovider deze sessies daadwerkelijk ondersteunt. Bij vervroegde sluiting eindigt 'Open' op het correcte moment. UI: 'Market Open', 'Pre-Market', 'After-Hours', 'Market Closed', of 'Status onbekend', met 'Bijgewerkt om HH:MM ET', bron en eventuele vertraging. Bij falende kalender of onbetrouwbare klok: 'Status onbekend', nooit blind 'Open'. De status actualiseert bij app-start, terugkeer uit achtergrond, bij sessiegrenzen en na kalenderverversing. De status van de beurs is **niet** hetzelfde als de versheid van een koers; beide labels apart.
+
+### Premium startscherm / splash
+Een herkenbaar TP-monogram met SVG-logo gecentreerd op #09111E, subtiele cyaan gloed en korte fade/scale (150–350ms). Dit is de **app-initialisatie**, geen marketinginterstitial en geen extra verplichte vertraging. Het splashscherm verdwijnt zodra de app-shell gereed is, ook wanneer marktdata nog laadt; de kaarten tonen dan skeletons. Respecteer prefers-reduced-motion, vermijd layout shift, zorg dat het scherm ook bij offline/API-fouten afsluit. Op iOS PWA een passende app-iconset en launch appearance, binnen platformbeperkingen; geen beloften over systeemgestuurde animaties.
+
+### Werkende zoekfunctie
+Zoekicoon Search in de header opent een toegankelijk zoekpaneel (desktop command-style dialog, mobiel full-screen). Typen van ticker of bedrijfsnaam zoekt een **echte instrumentenbron** via backend-proxy, met debounce, minimaal 2 tekens, resultaatlimiet en rate limiting. Elke resultaatregel toont symbool, naam, beurs en valuta; tikken opent Radar-detail of Analyzer. Lege zoekterm, geen resultaten, offline, 429 en providerfout hebben eigen toestanden. Geen verzonnen suggesties of hardcoded resultaten als actuele zoekfunctie. Toetsenbord: Ctrl/Cmd+K opent, Escape sluit, pijltjestoetsen selecteren, Enter bevestigt; focus wordt teruggezet.
+
+### Werkende notificatiebel
+Bell toont een ongelezen teller **uitsluitend** uit echte, aan de gebruiker gekoppelde meldingsrecords. Klik opent drawer met titel, gebeurtenis, ticker, aanmaaktijd, status gelezen/ongelezen en doelroute. 'Markeer gelezen' is een geautoriseerde servermutatie met loading/error/retry. Als er nog geen meldingenbackend is: toon 'Nog geen meldingen' en **geen teller**; geen dummyberichten. Alerts vereisen expliciet ingestelde voorwaarden en rechten. Push-notificaties zijn een aparte, opt-in capability en niet noodzakelijk voor een werkende in-app bel.
+
+### Haalbaarheidsmatrix en implementatievolgorde
+| Element | Technische realisatie | Benodigde afhankelijkheid | Fallback | Verificatie |
+|---|---|---|---|---|
+| Begroeting | Intl + profielnaam + app visibility events | profielinstelling | zonder naam | grensuren, tijdzone, hervatten |
+| Marktstatus | serverkalender + ET timezone + sessiegrenzen | betrouwbare exchange-kalender | status onbekend | DST, feestdag, early close |
+| Splash | SVG/CSS + shell-ready state | logoasset | direct dashboard | offline, reduced motion, iOS PWA |
+| Zoeken | input + backend instrument search | ondersteunde zoek-API en quota | fout/geen resultaten | echte query, 429, keyboard |
+| Notificaties | user-scoped DB + unread endpoint + drawer | auth, D1, alerts/eventbron | lege inbox | user-isolation, read/unread |
+| Quotes | marktdata Worker | entitlement, timestamps | historisch/stale | pre/regular/afterhours, delay |
+
+**Bouwvolgorde:** eerst app-shell/splash en lokale begroeting; vervolgens marktstatus met kalender; daarna echte tickersearch; daarna notificatie-inbox met opslag en eventbron. Iconen worden niet als 'werkend' afgevinkt voordat hun eind-tot-eind-flow getest is.
+
+### Extra acceptatiecriteria
+D11 dagdeelbegroeting correct bij 04:59/05:00/11:59/12:00/17:59/18:00/22:59/23:00, tijdzones en app-resume. D12 marktstatus correct bij NYSE-holidays, DST, early close en sessiegrenzen. D13 zoekresultaten zijn echt, navigeerbaar, keyboardtoegankelijk; fout/429/offline getest. D14 bel toont uitsluitend geautoriseerde records, echte unread counts en read-state; cross-user access onmogelijk. D15 splash sluit zonder kunstmatige wachttijd, ook bij offline of feedstoring, en respecteert reduced motion. D16 alle UI-acties hebben werkende handlers; decoratieve placeholders mogen niet als functionele controls worden gepresenteerd.
