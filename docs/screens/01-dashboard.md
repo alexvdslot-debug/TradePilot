@@ -239,3 +239,9 @@ D11 dagdeelbegroeting correct bij 04:59/05:00/11:59/12:00/17:59/18:00/22:59/23:0
 - OS08 geen iconen, afbeeldingen of CTA's zonder werkende functie; screenshots worden tegen implementatie vergeleken.
 
 **Reviewstatus:** technisch haalbaar met frontend, betrouwbare markt-/kalenderdata en backend voor zoeken/notificaties; nog niet geïmplementeerd of E2E getest. Exacte provider-entitlements, alerts-backend en branding-assets moeten bij de bouw worden gevalideerd.
+
+## Aanvulling v1.2 — EUR/USD, zoekfunctie en notificaties
+- KPI **Portefeuillewaarde** toont primaire €-waardering van alle holdings en cash, met daaronder de oorspronkelijke USD-waarde waar van toepassing. Voorbeeld uitsluitend als mockdata: **€ 30.000 ≈ $ 33.000** bij illustratieve koers 1 EUR = 1,10 USD; geen livewaarde claimen.
+- Scheid aandelenwaarde, USD-cash, EUR-cash, gerealiseerde USD-winst en indicatief EUR-totaal. Vermeld FX-bron, tijdstempel, eventuele vertraging en ontbrekende FX als onvolledige waardering.
+- Topbar: functionele globale zoekbalk (ticker/bedrijfsnaam, resultaten en toetsenbordnavigatie) plus bel met echte unread count; beide krijgen lege, loading, offline, 401 en 429-staten. Zoek- en notificatiedetails in `06-settings.md` en `07-global-search-notifications.md`.
+- Profiel-/tandwielmenu navigeert naar **zesde scherm Instellingen**. Desktop sidebar heeft zes routes; mobiel vijf primaire tabs en Instellingen via profielmenu om navigatie bruikbaar te houden.
