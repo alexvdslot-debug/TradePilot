@@ -74,3 +74,13 @@ test('search and notification overlays restore keyboard focus',async({page})=>{
  await page.keyboard.press('Escape');
  await expect(page.getByRole('button',{name:'Meldingen'})).toBeFocused();
 });
+
+test('keyboard shortcut opens search and Escape restores focus',async({page})=>{
+ await page.goto('http://127.0.0.1:8765/app/index.html');
+ await expect(page.locator('.splash')).toBeHidden({timeout:5000});
+ await page.keyboard.press('Control+k');
+ await expect(page.getByRole('dialog',{name:'Zoeken'})).toBeVisible();
+ await expect(page.locator('#search-input')).toBeFocused();
+ await page.keyboard.press('Escape');
+ await expect(page.getByRole('button',{name:'Zoeken'})).toBeFocused();
+});
