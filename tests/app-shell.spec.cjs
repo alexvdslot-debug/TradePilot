@@ -53,3 +53,24 @@ test('night greeting uses local time and updates when tab resumes',async({page})
  await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));
  await expect(page.locator('#dashboard-greeting')).toHaveText('Goedemorgen');
 });
+
+test('dashboard has no horizontal overflow at 375px and desktop',async({page})=>{
+ for(const width of [375,1440]){
+  await page.setViewportSize({width,height:900});
+  await page.goto('http://127.0.0.1:8765/app/index.html');
+  await expect(page.locator('.splash')).toBeHidden({timeout:5000});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ }
+});
+test('search and notification overlays restore keyboard focus',async({page})=>{
+ await page.goto('http://127.0.0.1:8765/app/index.html');
+ await expect(page.locator('.splash')).toBeHidden({timeout:5000});
+ await page.getByRole('button',{name:'Zoeken'}).click();
+ await expect(page.locator('#search-input')).toBeFocused();
+ await page.keyboard.press('Escape');
+ await expect(page.getByRole('button',{name:'Zoeken'})).toBeFocused();
+ await page.getByRole('button',{name:'Meldingen'}).click();
+ await expect(page.getByRole('dialog',{name:'Meldingen'})).toBeVisible();
+ await page.keyboard.press('Escape');
+ await expect(page.getByRole('button',{name:'Meldingen'})).toBeFocused();
+});
