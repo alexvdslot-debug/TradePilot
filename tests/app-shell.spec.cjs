@@ -113,3 +113,5 @@ test('offline dashboard shows error and recovers when online',async({page,contex
  await context.setOffline(false);
  await expect(page.locator('#connectivity-notice')).toBeHidden();
 });
+
+test('small screen does not overflow',async({page})=>{await page.setViewportSize({width:320,height:850});await page.goto('http://127.0.0.1:8765/app/index.html');await expect(page.locator('.splash')).toBeHidden({timeout:5000});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true)});
