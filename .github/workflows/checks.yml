@@ -4,6 +4,7 @@ on:
     paths:
       - 'v4.html'
       - 'v5.html'
+      - 'playwright.config.cjs'
       - 'tests/**'
       - '.github/workflows/checks.yml'
   pull_request:
@@ -30,3 +31,9 @@ jobs:
             console.log(path+' JavaScript syntax valid');
           }
           NODE
+      - name: Install Playwright test runner
+        run: npm install --no-save @playwright/test@1.58.2
+      - name: Install Chromium browser
+        run: npx playwright install --with-deps chromium
+      - name: Chromium end-to-end tests
+        run: npx playwright test
