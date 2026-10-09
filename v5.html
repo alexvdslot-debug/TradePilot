@@ -135,6 +135,14 @@ function calculate(){
  }catch(e){$('scenario').textContent='Controleer de invoer: '+e.message}
 }
 $('reload').onclick=readPortfolio;$('backup').onclick=backup;$('refresh').onclick=loadMarket;$('calculate').onclick=calculate;
+function bindTabButtons(){
+ document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>selectTab(b.dataset.tab)));
+ document.querySelectorAll('.quick a').forEach(a=>a.addEventListener('click',e=>{
+  const id=a.getAttribute('href');
+  const name=id==='#radar-panel'?'radar':id==='#scenario-panel'?'risk':'home';
+  e.preventDefault();selectTab(name);
+ }));
+}
 function selectTab(name){
  const allowed=['home','radar','risk','data'];if(!allowed.includes(name))name='home';
  for(const id of allowed){
@@ -145,8 +153,7 @@ function selectTab(name){
  if(location.hash!=='#'+name)history.replaceState(null,'','#'+name);
  window.scrollTo({top:0,behavior:'instant'});
 }
-document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>selectTab(b.dataset.tab)));
-document.querySelectorAll('.quick a').forEach(a=>a.addEventListener('click',e=>{const id=a.getAttribute('href');const name=id==='#radar-panel'?'radar':id==='#scenario-panel'?'risk':id==='#feed-panel'?'home':'home';e.preventDefault();selectTab(name)}));
+bindTabButtons();
 selectTab(location.hash.slice(1));
 readPortfolio();renderRadar();loadMarket();
 </script></body></html>
