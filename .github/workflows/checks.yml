@@ -1,0 +1,29 @@
+name: TradePilot checks
+on:
+  push:
+    paths:
+      - 'v4.html'
+      - 'tests/**'
+      - '.github/workflows/checks.yml'
+  pull_request:
+  workflow_dispatch:
+jobs:
+  portfolio:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Portfolio regression tests
+        run: node --test tests/*.test.cjs
+      - name: Check frontend JavaScript syntax
+        run: |
+          node - <<'NODE'
+          const fs=require('fs'),vm=require('vm');
+          const html=fs.readFileSync('v4.html','utf8');
+          const js=html.split('<script>')[1]?.split('</script>')[0];
+          if(!js)throw Error('Missing script');
+          new vm.Script(js,{filename:'v4.html'});
+          console.log('JavaScript syntax valid');
+          NODE
