@@ -1,0 +1,41 @@
+/**
+ * TradePilot Pro market-data edge. Deploy as Cloudflare Worker.
+ * Set TWELVE_DATA_API_KEY as a Worker secret and ALLOWED_ORIGIN as a variable.
+ * Do not expose this endpoint publicly without authentication and rate limiting.
+ */
+const SYMBOL=/^[A-Z][A-Z0-9.]{0,9}$/;
+const INTERVALS=new Set(['5min','15min']);
+function response(body,status=200,headers={}){return new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff',...headers}})}
+export default {async fetch(request,env){
+  const url=new URL(request.url);
+  const origin=request.headers.get('origin');
+  const allowed=env.ALLOWED_ORIGIN;
+  const cors=origin&&allowed&&origin===allowed?{'access-control-allow-origin':allowed,'vary':'Origin'}:{};
+  if(request.method==='OPTIONS')return new Response(null,{status:204,headers:{...cors,'access-control-allow-methods':'GET, OPTIONS','access-control-allow-headers':'Authorization'}});
+  if(request.method!=='GET')return response({error:'Method not allowed'},405,cors);
+  if(url.pathname==='/health')return response({status:'ok',marketData:'requires authenticated request'},200,cors);
+  if(url.pathname!=='/api/candles')return response({error:'Not found'},404,cors);
+  // Fail closed until the deployment configures a dedicated client token.
+  if(!env.CLIENT_ACCESS_TOKEN || request.headers.get('authorization')!==`Bearer ${env.CLIENT_ACCESS_TOKEN}`)return response({error:'Unauthorized'},401,cors);
+  if(!env.TWELVE_DATA_API_KEY)return response({error:'Market provider not configured'},503,cors);
+  const symbol=(url.searchParams.get('symbol')||'').toUpperCase();
+  const interval=url.searchParams.get('interval')||'5min';
+  if(!SYMBOL.test(symbol)||!INTERVALS.has(interval))return response({error:'Invalid symbol or interval'},400,cors);
+  const upstream=new URL('https://api.twelvedata.com/time_series');
+  upstream.searchParams.set('symbol',symbol);
+  upstream.searchParams.set('interval',interval);
+  upstream.searchParams.set('outputsize','100');
+  upstream.searchParams.set('timezone','America/New_York');
+  upstream.searchParams.set('apikey',env.TWELVE_DATA_API_KEY);
+  try{
+    const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),7000);
+    let res;
+    try{res=await fetch(upstream,{signal:controller.signal,headers:{accept:'application/json'}})}finally{clearTimeout(timer)}
+    if(!res.ok)return response({error:'Market provider unavailable',providerStatus:res.status},502,cors);
+    const data=await res.json();
+    if(data.status==='error'||!Array.isArray(data.values))return response({error:'Market provider returned no usable candles'},502,cors);
+    const values=data.values.map(x=>({time:x.datetime,o:Number(x.open),h:Number(x.high),l:Number(x.low),c:Number(x.close),v:Number(x.volume)}));
+    if(values.some(x=>![x.o,x.h,x.l,x.c,x.v].every(Number.isFinite)))return response({error:'Malformed provider candles'},502,cors);
+    return response({symbol,interval,provider:'Twelve Data',timezone:data.meta?.timezone||'America/New_York',exchange:data.meta?.exchange||null,marketSession:'unverified',realtime:'unverified',retrievedAt:new Date().toISOString(),candles:values},200,cors);
+  }catch{return response({error:'Market data request failed'},502,cors)}
+}};
