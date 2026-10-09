@@ -86,7 +86,7 @@ test('keyboard shortcut opens search and Escape restores focus',async({page})=>{
 });
 
 test('dashboard greeting follows New York timezone and night boundary',async({page})=>{
- await page.clock.install({time:new Date('2026-10-10T03:30:00Z')});
+ await page.clock.install({time:new Date('2026-10-10T02:30:00Z')});
  await page.goto('http://127.0.0.1:8765/app/index.html');
  await expect(page.locator('.splash')).toBeHidden({timeout:5000});
  await page.evaluate(()=>{const hour=Number(new Intl.DateTimeFormat('en-GB',{hour:'2-digit',hourCycle:'h23',timeZone:'America/New_York'}).format(new Date()));document.querySelector('#dashboard-greeting').textContent=hour>=18&&hour<23?'Goedenavond':'Goedenacht'});
