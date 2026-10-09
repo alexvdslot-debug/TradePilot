@@ -1,0 +1,2 @@
+# TradePilot
+AI trading cockpit 
