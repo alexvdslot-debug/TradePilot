@@ -58,3 +58,24 @@ test('no portfolio transaction is sent to market data endpoint',async({page})=>{
  expect(requestUrl).not.toContain('price');
  expect(requestUrl).toContain('symbols=');
 });
+
+test('real tabs switch content without long-page scrolling',async({page})=>{
+ await page.goto(pageUrl);
+ await expect(page.locator('#panel-home')).toBeVisible();
+ await expect(page.locator('#panel-radar')).toBeHidden();
+ await page.locator('#tab-radar').click();
+ await expect(page.locator('#panel-radar')).toBeVisible();
+ await expect(page.locator('#panel-home')).toBeHidden();
+ await expect(page.locator('#tab-radar')).toHaveAttribute('aria-selected','true');
+ await page.locator('#tab-risk').click();
+ await expect(page.locator('#panel-risk')).toBeVisible();
+ await expect(page.locator('#panel-radar')).toBeHidden();
+});
+test('mobile bottom tabs switch to risk calculator',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto(pageUrl);
+ await page.locator('.bottom-nav [data-tab="risk"]').click();
+ await expect(page.locator('#panel-risk')).toBeVisible();
+ await expect(page.locator('#panel-home')).toBeHidden();
+ await expect(page.locator('#calculate')).toBeVisible();
+});
