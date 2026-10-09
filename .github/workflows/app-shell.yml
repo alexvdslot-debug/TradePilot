@@ -1,0 +1,22 @@
+name: TradePilot app shell checks
+on:
+  push:
+    branches: [tradepilot-pro-rebuild]
+    paths: ['app/**', 'tests/app-shell.spec.cjs', '.github/workflows/app-shell.yml']
+  workflow_dispatch:
+jobs:
+  app-shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check
+        run: node --check app/main.js
+      - name: Install Playwright
+        run: npm install --no-save @playwright/test@1.58.2
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Browser smoke tests
+        run: npx playwright test tests/app-shell.spec.cjs --config=playwright.config.cjs
