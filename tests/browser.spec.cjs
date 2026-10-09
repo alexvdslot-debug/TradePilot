@@ -41,3 +41,20 @@ test('mobile viewport has usable controls',async({page})=>{
  await expect(page.locator('#refresh')).toBeVisible();
  await expect(page.locator('#portfolio')).toContainText('OPEN');
 });
+
+test('stale quote cannot be labelled recent',async({page})=>{
+ await page.unrouteAll();
+ await page.route('https://tradepilot-market-data.alexvdslot.workers.dev/**',route=>route.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify({provider:'Twelve Data',asOf:new Date().toISOString(),quotes:{OPEN:{price:2.7,changePercent:2.1,volume:123456,datetime:'2025-01-01T12:00:00Z'}}})}));
+ await page.goto(pageUrl);
+ await expect(page.locator('#systemStatus')).toContainText('geen tijdstempels betrouwbaar');
+ await expect(page.locator('#radar')).toContainText('Ouder dan 20 min');
+});
+test('no portfolio transaction is sent to market data endpoint',async({page})=>{
+ let requestUrl='';
+ await page.on('request',r=>{if(r.url().includes('tradepilot-market-data'))requestUrl=r.url()});
+ await page.goto(pageUrl);
+ await expect(page.locator('#feed')).toContainText('Twelve Data');
+ expect(requestUrl).not.toContain('transactions');
+ expect(requestUrl).not.toContain('price');
+ expect(requestUrl).toContain('symbols=');
+});
