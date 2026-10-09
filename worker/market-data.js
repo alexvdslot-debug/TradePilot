@@ -11,7 +11,7 @@ export default {async fetch(request,env){
  if(request.method!=='GET')return new Response(JSON.stringify({error:'Method not allowed'}),{status:405,headers});
  if(!env.TWELVE_DATA_API_KEY)return new Response(JSON.stringify({error:'Market data not configured'}),{status:503,headers});
  const u=new URL(request.url),symbols=(u.searchParams.get('symbols')||'').split(',').map(s=>s.trim().toUpperCase()).filter(Boolean);
- if(!symbols.length||symbols.length>8||symbols.some(s=>!SYMBOL.test(s)))return new Response(JSON.stringify({error:'Provide 1-8 valid symbols'}),{status:400,headers});
+ if(!symbols.length||symbols.length>10||symbols.some(s=>!SYMBOL.test(s)))return new Response(JSON.stringify({error:'Provide 1-10 valid symbols'}),{status:400,headers});
  const out={asOf:new Date().toISOString(),provider:'Twelve Data',quotes:{},errors:{}};
  await Promise.all(symbols.map(async symbol=>{
   try{
