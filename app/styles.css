@@ -29,3 +29,16 @@
 @media(max-width:900px){.dashboard-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:620px){.dashboard-columns{grid-template-columns:minmax(0,1fr)}.dashboard-kpis{gap:10px}.dashboard-kpis .card{padding:14px}.dashboard-kpis .card h2{font-size:13px}}
 @media(max-width:340px){.dashboard-kpis{grid-template-columns:minmax(0,1fr)}}
+
+/* Prevent fixed five-tab navigation from forcing horizontal scroll on narrow phones. */
+@media(max-width:420px){
+ .bottom{min-width:0}
+ .bottom .tab{min-width:0;overflow-wrap:anywhere;font-size:10px}
+ .bottom .tab .ui-icon{width:18px;height:18px}
+ .header{min-width:0}
+ .brand{min-width:0;font-size:15px;gap:5px}
+ .header-actions{flex-shrink:0;gap:2px}
+ .icon-button{min-width:40px;width:40px;padding:0}
+ .shell{min-width:0;padding-left:12px;padding-right:12px}
+ .card{min-width:0;overflow-wrap:anywhere}
+}
