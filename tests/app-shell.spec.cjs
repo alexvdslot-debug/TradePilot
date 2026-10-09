@@ -95,3 +95,12 @@ test('dashboard greeting follows New York timezone and night boundary',async({pa
  await page.evaluate(()=>{const hour=Number(new Intl.DateTimeFormat('en-GB',{hour:'2-digit',hourCycle:'h23',timeZone:'America/New_York'}).format(new Date()));document.querySelector('#dashboard-greeting').textContent=hour>=18&&hour<23?'Goedenavond':'Goedenacht'});
  await expect(page.locator('#dashboard-greeting')).toHaveText('Goedenacht');
 });
+
+test('dialog makes the background inert and restores it on Escape',async({page})=>{
+ await page.goto('http://127.0.0.1:8765/app/index.html');
+ await expect(page.locator('.splash')).toBeHidden({timeout:5000});
+ await page.getByRole('button',{name:'Zoeken'}).click();
+ await expect(page.locator('.shell')).toHaveAttribute('inert','');
+ await page.keyboard.press('Escape');
+ await expect(page.locator('.shell')).not.toHaveAttribute('inert','');
+});
