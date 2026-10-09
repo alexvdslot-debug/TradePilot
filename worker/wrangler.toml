@@ -1,0 +1,13 @@
+name = "tradepilot-pro-api"
+main = "src/index.mjs"
+compatibility_date = "2026-10-09"
+workers_dev = true
+
+# Set ALLOWED_ORIGIN to the exact production app origin.
+# Configure secrets using wrangler secret put:
+# TWELVE_DATA_API_KEY
+# CLIENT_ACCESS_TOKEN
+# Do not put secret values in this file.
+
+[vars]
+ALLOWED_ORIGIN = "https://alexvdslot-debug.github.io"
