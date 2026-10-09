@@ -124,3 +124,41 @@ Bij iedere toestand zijn loading, aria-live melding, herstelactie en toegestane 
 - **Opgelost in specificatie:** expliciete login/lege portefeuille/partiële data/feeduitval/gesloten beurs; routing en retrygedrag; prioritering van risico boven kansen.
 - **Nog niet gevalideerd:** echte API-responsecontracten, auth-keuze, datalicentie, implementatie van statusmachine, usabilitytest met echte gebruikers, toegankelijkheidsaudit en browser-E2E.
 - **Besluit:** Dashboard v1.1 is gereed als implementatiespecificatie voor UX-flow; niet vrijgegeven als werkende of geteste app.
+
+
+## Aanvulling v1.2 — dynamische begroeting, marktstatus en opstartscherm (9 oktober 2026)
+**Productbesluit:** begroeting, beursstatus en opstartanimatie zijn echte, toetsbare functies, geen decoratieve tekst in een mock-up.
+
+### Dynamische begroeting
+- Op het dashboard direct onder de topbar een persoonlijke begroeting, bijvoorbeeld **'Goedenavond, Alexander'**; voornaam komt uitsluitend uit het ingelogde gebruikersprofiel, nooit uit hardcoded mockdata. Zonder ingestelde voornaam: 'Goedenavond'.
+- Bepaal het dagdeel op basis van de **lokale tijdzone van de gebruiker** via `Intl.DateTimeFormat`, met instelbare voorkeur en veilige fallback. Voorgestelde grenzen (productkeuze, configureerbaar): 05:00–11:59 'Goedemorgen'; 12:00–17:59 'Goedemiddag'; 18:00–22:59 'Goedenavond'; 23:00–04:59 'Goedenacht'. Inclusief correcte grensminuten en DST-overgangen.
+- Herbereken bij eerste render, zichtbaarheid van browser/tab, tijdzonewijziging en elke minuut; gebruik geen vast tekstfragment dat blijft hangen als de app uren openstaat. Geen hydration-flash met onjuiste begroeting: vóór clienttijd beschikbaar neutrale tekst of client-only render.
+- Naam veilig escapenen; schermlezer leest volledige begroeting. In instellingen kan persoonlijke begroeting worden uitgezet.
+
+### Dynamische Amerikaanse marktstatus
+- Badge in dashboardheader: **'Premarket'**, **'Markt open'**, **'After-hours'**, **'Gesloten'** of **'Status onbekend'**; met exact controle-/update-tijdstip, en op detailscherm volgende reguliere opening/sluiting in ET én lokale tijd.
+- Leid status af van een **betrouwbare NYSE/Nasdaq-beurskalender met America/New_York tijdzone**, inclusief weekenden, Amerikaanse feestdagen, vervroegde sluitingen en zomertijdverschillen tussen VS en Europa. Normale reguliere sessie 09:30–16:00 ET; niet hardcoderen als '22:00 Nederlandse tijd'. Premarket/afterhours hangen mede af van datarechten en providerdekking.
+- Gebruik server-endpoint `GET /api/market/session` dat `status`, `exchange`, `checked_at_utc`, `next_transition_utc`, `calendar_source`, `is_early_close` en `confidence` levert. Client herberekent bij `next_transition_utc` en controleert bij terugkeer in tab of periodiek; fout/geen kalender => 'Status onbekend', nooit ten onrechte 'Markt open'.
+- Markeer een marktstatus niet als bevestiging dat de koersfeed realtime is; een afzonderlijke badge toont quote-bron, sessie, tijdstempel en vertraging.
+- Bij vervroegde sluiting, beursstoring, trading halt of provideruitval correcte aparte waarschuwing; kalenderstatus is niet hetzelfde als operationele markttoegang.
+
+### Opstartbeeld / splash
+- Bij het openen van de app een **donker premium opstartscherm** met gecentreerd TradePilot Pro vectorlogo/TP-monogram op #09111E, subtiele cyaan gloed, rustige 200–350ms fade/scale-in en optioneel 'Portfolio. Opportunities. Decisions.' onder het logo.
+- De animatie wordt **niet kunstmatig verlengd**: splash verdwijnt zodra auth-/app-shell-initialisatie klaar is. Bij trage verbinding na korte tijd toegankelijke voortgangstekst 'App voorbereiden…', daarna fout-/retrytoestand indien nodig. Bij `prefers-reduced-motion` direct statisch logo; nooit animatie die toegang tot login blokkeert.
+- Geen fictieve koersgrafieken, live-prijzen of P&L op het splashscreen. Logo als SVG/CSS is met standaard webtechnologie realiseerbaar; volledige custom-video is niet nodig.
+- Tijdens auth blijft privéportfolio verborgen; na auth volgt Dashboard met begroeting en actuele marktstatus. Bij 401 volgt login, niet een lege privé-dashboardmockup.
+
+### Werkende iconen: Search en Bell
+- **Search** opent een toegankelijke zoekoverlay (Ctrl/Cmd+K optioneel) voor echte ticker-/navigatieresultaten via een serverendpoint; loading, geen resultaten, fout, toetsenbord, Escape en selectie naar Radar/Analyzer zijn gespecificeerd. Geen nepzoekresultaten.
+- **Bell** opent meldingenpaneel met echte alertrecords, tijdstempel, gelezen/ongelezen en doorklik; badge alleen bij ongelezen records. Bij ontbrekende notificatiebackend: expliciet 'Meldingen nog niet beschikbaar' en geen functioneel ogende dummyknop. Pushnotificaties pas aanbieden na daadwerkelijke toestemming en ondersteund kanaal.
+
+### Implementatie- en testgates
+- G01 begroeting verandert op alle vier dagdeelgrenzen zonder paginareload.
+- G02 tijdzone Europe/Amsterdam en America/New_York, DST-overgangen en lokale middernacht getest.
+- G03 Amerikaanse feestdagen en early close geven juiste status/volgende overgang; '22:00 sluiting' nooit hardcoded.
+- G04 marktstatus schakelt zonder reload op opening/sluiting en na slaapstand/tab-heractivatie.
+- G05 marktstatus, feedvertraging en sessie zijn afzonderlijk gelabeld.
+- G06 splash op koude/warme start, trage auth, offline en 401; geen kunstmatige wachttijd of blootstelling van privédata.
+- G07 reduced-motion, focus en screenreader werken.
+- G08 Search en Bell hebben echte datakoppelingen, empty/error/loading en browsernavigatie.
+- G09 screenshots en browser-E2E moeten deze eisen nog bewijzen; de specificatie zelf is geen bewijs van implementatie.
