@@ -85,15 +85,18 @@ test('keyboard shortcut opens search and Escape restores focus',async({page})=>{
  await expect(page.getByRole('button',{name:'Zoeken'})).toBeFocused();
 });
 
-test('dashboard greeting follows New York timezone and night boundary',async({page})=>{
- await page.clock.install({time:new Date('2026-10-10T02:30:00Z')});
- await page.goto('http://127.0.0.1:8765/app/index.html');
- await expect(page.locator('.splash')).toBeHidden({timeout:5000});
- await page.evaluate(()=>{const hour=Number(new Intl.DateTimeFormat('en-GB',{hour:'2-digit',hourCycle:'h23',timeZone:'America/New_York'}).format(new Date()));document.querySelector('#dashboard-greeting').textContent=hour>=18&&hour<23?'Goedenavond':'Goedenacht'});
- await expect(page.locator('#dashboard-greeting')).toHaveText('Goedenavond');
- await page.clock.setFixedTime(new Date('2026-10-10T04:30:00Z'));
- await page.evaluate(()=>{const hour=Number(new Intl.DateTimeFormat('en-GB',{hour:'2-digit',hourCycle:'h23',timeZone:'America/New_York'}).format(new Date()));document.querySelector('#dashboard-greeting').textContent=hour>=18&&hour<23?'Goedenavond':'Goedenacht'});
- await expect(page.locator('#dashboard-greeting')).toHaveText('Goedenacht');
+test('dashboard greeting follows actual New York browser timezone',async({browser})=>{
+ const context=await browser.newContext({timezoneId:'America/New_York'});
+ const page=await context.newPage();
+ try{
+  await page.clock.install({time:new Date('2026-10-10T02:30:00Z')});
+  await page.goto('http://127.0.0.1:8765/app/index.html');
+  await expect(page.locator('.splash')).toBeHidden({timeout:5000});
+  await expect(page.locator('#dashboard-greeting')).toHaveText('Goedenavond');
+  await page.clock.setFixedTime(new Date('2026-10-10T04:30:00Z'));
+  await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));
+  await expect(page.locator('#dashboard-greeting')).toHaveText('Goedenacht');
+ }finally{await context.close()}
 });
 
 test('dialog makes the background inert and restores it on Escape',async({page})=>{
