@@ -25,3 +25,21 @@ test('mobile bottom navigation works',async({page})=>{
  await page.locator('.bottom').getByText('Journal').click();
  await expect(page.getByRole('heading',{name:'Trade Journal'})).toBeVisible();
 });
+
+test('dashboard follows B2 empty-state contract without fabricated market values',async({page})=>{
+ await page.goto('http://127.0.0.1:8765/app/index.html');
+ await expect(page.locator('.splash')).toBeHidden({timeout:5000});
+ for(const title of ['Portefeuillewaarde','Dagresultaat','Kapitaal onder risico','Beschikbare cash','Mijn posities','Risico & marktstatus','Kansen voor 1–5 handelsdagen','Watchlist','Recente handelsplannen']){
+  await expect(page.getByRole('heading',{name:title,exact:true})).toBeVisible();
+ }
+ await expect(page.getByText('Nog geen bevestigde kansen')).toBeVisible();
+ await expect(page.getByText('Actuele marktgegevens niet beschikbaar',{exact:false})).toBeVisible();
+ await expect(page.getByText('Bron: niet verbonden',{exact:false})).toBeVisible();
+});
+test('dashboard stays within 320px viewport',async({page})=>{
+ await page.setViewportSize({width:320,height:740});
+ await page.goto('http://127.0.0.1:8765/app/index.html');
+ await expect(page.locator('.splash')).toBeHidden({timeout:5000});
+ const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth);
+ expect(overflow).toBe(false);
+});
