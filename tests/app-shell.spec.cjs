@@ -104,3 +104,12 @@ test('dialog makes the background inert and restores it on Escape',async({page})
  await page.keyboard.press('Escape');
  await expect(page.locator('.shell')).not.toHaveAttribute('inert','');
 });
+
+test('offline dashboard shows error and recovers when online',async({page,context})=>{
+ await page.goto('http://127.0.0.1:8765/app/index.html');
+ await expect(page.locator('.splash')).toBeHidden({timeout:5000});
+ await context.setOffline(true);
+ await expect(page.locator('#connectivity-notice')).toBeVisible();
+ await context.setOffline(false);
+ await expect(page.locator('#connectivity-notice')).toBeHidden();
+});
