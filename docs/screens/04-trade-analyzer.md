@@ -83,3 +83,9 @@ TA01 desktop 1440 en mobiel 320/375px volgens layout. TA02 navigatie en back/for
 
 ## Open punten vóór implementatie
 DEGIRO fee- en FX-model, realistische slippagebron, risicobudgetinstelling, stop/targetstrategie, partial sales, broker-margins, providerrechten en exacte journal-schema. Geen mock-up of werkende analyzer wordt hiermee geclaimd.
+
+## Aanvulling v1.1 — USD-trade en EUR-risicobudget
+- Entry/stop/targets, bruto opbrengst en handels-P&L primair **USD**. Toon daarnaast **€-indicatie** van positiewaarde, risicobudget en netto scenarioresultaat op basis van getoonde USD/EUR FX-bron en timestamp.
+- Bij gedeeltelijke OPEN-rotatie blijven verkoopopbrengsten **USD-cash**; geen automatische FX-omwisseling of fictieve FX-kosten. Werkelijke orderfees per kostenvaluta boeken.
+- Bij ontbreken van betrouwbare FX: USD-scenario mag zichtbaar zijn, maar EUR-budgetvalidatie of 'trade_allowed' niet bevestigen als EUR-risico noodzakelijk is.
+- Search en bel via globale shell; voorkeuren in Instellingen.
