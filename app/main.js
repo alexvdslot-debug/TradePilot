@@ -1,6 +1,7 @@
-const pages=[['dashboard','Dashboard','⌂'],['portfolio','Portfolio','▤'],['radar','Kansen','◈'],['analyzer','Analyzer','⌁'],['journal','Journal','▣']];
+const pages=[['dashboard','Dashboard','home'],['portfolio','Portfolio','portfolio'],['radar','Kansen','radar'],['analyzer','Analyzer','analyzer'],['journal','Journal','journal']];
 const app=document.getElementById('app');
 let searchOpen=false,notificationOpen=false,searchCategory='Aandelen',lastFocus=null;
+const svg=id=>'<svg class="ui-icon" aria-hidden="true"><use href="./assets/icons.svg#'+id+'"></use></svg>';
 const route=()=>location.pathname.replace(/\/$/,'').split('/').pop()||'dashboard';
 const pageText={
  dashboard:['Jouw tradingoverzicht','Hier komen je portefeuille, marktstatus en maximaal drie onderbouwde kansen samen.'],
@@ -9,14 +10,14 @@ const pageText={
  analyzer:['Trade Analyzer','Hier vergelijk je instap, stop-loss, koersdoelen, risico en kosten met je bestaande posities.'],
  journal:['Trade Journal','Leg je handelsplannen, uitvoeringen en evaluaties vast.']
 };
-function iconButton(label,symbol,id){return '<button type="button" class="icon-button" aria-label="'+label+'" id="'+id+'">'+symbol+'</button>'}
+function iconButton(label,symbol,id){return '<button type="button" class="icon-button" aria-label="'+label+'" id="'+id+'"'+svg(symbol)+'</button>'}
 function tabs(cls){return '<nav class="'+cls+'" aria-label="Hoofdnavigatie">'+pages.map(([id,label,symbol])=>'<a class="tab" href="./'+id+'" data-route="'+id+'" '+(route()===id?'aria-current="page"':'')+'><span aria-hidden="true">'+symbol+'</span>'+label+'</a>').join('')+'</nav>'}
 function greeting(){const h=new Date().getHours();return h<12?'Goedemorgen':h<18?'Goedemiddag':'Goedenavond'}
 function pageContent(id){if(id==='settings')return '<button class="back" data-back>← Terug</button><p class="eyebrow">Voorkeuren</p><h1>Instellingen</h1><p class="muted">De instellingenstructuur is beschikbaar. Opslaan volgt zodra de accountlaag is aangesloten.</p>'+[['Profiel en regio','Naam, taal en tijdzone'],['Valuta en portefeuille','EUR-weergave en USD-transacties'],['Risico en analyse','Risicobudget en analysevoorkeuren'],['Meldingen','Koers- en planmeldingen'],['Data en transparantie','Databronnen, vertraging en marktstatus'],['Privacy en account','Toegang en gegevensbeheer']].map(([title,desc])=>'<div class="settings-row"><strong>'+title+'</strong><span>'+desc+'</span></div>').join('');
  const [title,desc]=pageText[id]||pageText.dashboard;
  return '<p class="eyebrow">TradePilot Pro</p><h1>'+(id==='dashboard'?greeting()+', Alexander':title)+'</h1><p class="muted">'+desc+'</p>'+(id==='dashboard'?'<div class="grid"><section class="card"><h2>Portefeuillewaarde</h2><strong>—</strong><p class="muted">Nog geen gekoppelde portefeuilledata</p></section><section class="card"><h2>Marktstatus</h2><strong>Niet verbonden</strong><p class="muted">Geen geverifieerde actuele koersen</p></section><section class="card"><h2>Kansen</h2><strong>—</strong><p class="muted">Scanner nog niet aangesloten</p></section></div>':'<div class="card" style="margin-top:24px"><h2>Functie in ontwikkeling</h2><p class="muted">De route werkt. De inhoud wordt in een volgende bouwfase aangesloten en getest.</p></div>')+'<div class="notice">Ontwikkelversie · Geen live marktdata, brokerkoppeling of handelsadvies.</div>'}
 function render(){const id=route();document.title=(id==='settings'?'Instellingen':(pages.find(p=>p[0]===id)||pages[0])[1])+' · TradePilot Pro';
- app.innerHTML='<div class="shell"><header class="header"><a class="brand" href="./dashboard" data-route="dashboard"><span class="brand-mark" aria-hidden="true">↗</span>TradePilot <span style="color:#2388b9">Pro</span></a><div class="header-actions">'+iconButton('Zoeken','⌕','search')+iconButton('Meldingen','♧','notifications')+iconButton('Instellingen','⚙','settings')+'</div></header>'+tabs('tabs')+'<main class="content" id="main">'+pageContent(id)+'</main></div>'+tabs('bottom');
+ app.innerHTML='<div class="shell"><header class="header"><a class="brand" href="./dashboard" data-route="dashboard"><img class="brand-mark" src="./assets/tradepilot-mark.svg" alt="" width="38" height="38">TradePilot <span style="color:#2388b9">Pro</span></a><div class="header-actions">'+iconButton('Zoeken','search','search')+iconButton('Meldingen','bell','notifications')+iconButton('Instellingen','settings','settings')+'</div></header>'+tabs('tabs')+'<main class="content" id="main">'+pageContent(id)+'</main></div>'+tabs('bottom');
  if(searchOpen)renderSearch();if(notificationOpen)renderNotifications();
  document.getElementById('search').onclick=()=>{lastFocus=document.activeElement;searchOpen=true;notificationOpen=false;render();document.getElementById('search-input').focus()};
  document.getElementById('notifications').onclick=()=>{lastFocus=document.activeElement;notificationOpen=true;searchOpen=false;render();document.getElementById('close-notifications').focus()};
