@@ -91,3 +91,8 @@ RD01 1440/375/320px layouts conform spec; RD02 vijf-tabs navigatie werkt; RD03 f
 
 ## 9. Open beslissingen vóór bouw
 Dataproviderlicenties voor scanuniversum en bid/ask, exact ondersteunde extended-hours feeds, scoregewichten, liquidity-thresholds, corporate-action-data, alertkanaal en notificatiebeperkingen. Dit is een uitvoerbare ontwerpspecificatie, **geen** bevestiging dat een scanner of mock-up bestaat.
+
+## Aanvulling v1.1 — valuta, zoeken en notificaties
+- Radar-koersen, entry, stop en koersdoelen primair **USD**. Bij mogelijke inzet/risico optionele **€-tegenwaarde**, expliciet indicatief met FX-timestamp; nooit USD en EUR ongemerkt optellen.
+- Kansenkaart kan tonen: 'Potentieel risico $ X / ≈ € Y' als volledige inputs beschikbaar zijn. Ontbrekende FX geeft '€ niet beschikbaar', geen gefingeerde conversie.
+- Globale tickerzoekfunctie leidt naar instrumentdetail/Radar; notificatiebel toont echte alerts. Instellingen voor displayvaluta en risicobudget via zesde scherm.
