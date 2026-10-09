@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - 'v4.html'
+      - 'v5.html'
       - 'tests/**'
       - '.github/workflows/checks.yml'
   pull_request:
@@ -21,9 +22,11 @@ jobs:
         run: |
           node - <<'NODE'
           const fs=require('fs'),vm=require('vm');
-          const html=fs.readFileSync('v4.html','utf8');
-          const js=html.split('<script>')[1]?.split('</script>')[0];
-          if(!js)throw Error('Missing script');
-          new vm.Script(js,{filename:'v4.html'});
-          console.log('JavaScript syntax valid');
+          for(const path of ['v4.html','v5.html']){
+            const html=fs.readFileSync(path,'utf8');
+            const js=html.split('<script>')[1]?.split('</script>')[0];
+            if(!js)throw Error('Missing script: '+path);
+            new vm.Script(js,{filename:path});
+            console.log(path+' JavaScript syntax valid');
+          }
           NODE
