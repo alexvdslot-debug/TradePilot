@@ -1,6 +1,6 @@
 const {test,expect}=require('@playwright/test');
 const path=require('node:path');
-const pageUrl='file://'+path.resolve(__dirname,'../v5.html');
+const pageUrl='http://127.0.0.1:8765/v5.html';
 const portfolio={transactions:[{t:'OPEN',side:'buy',q:100,price:2.50,fee:1,date:'2026-10-08',seq:1}]};
 test.beforeEach(async({page})=>{
  await page.addInitScript(data=>localStorage.setItem('tradepilot-v2-data',JSON.stringify(data)),portfolio);
