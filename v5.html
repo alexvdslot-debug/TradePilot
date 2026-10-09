@@ -36,7 +36,7 @@ Zonder deze bevestigingen: WACHTEN.</div><p><small>Intradaycandles en een gevali
 "use strict";
 const $=id=>document.getElementById(id);
 const money=x=>new Intl.NumberFormat('nl-NL',{style:'currency',currency:'USD'}).format(x);
-const num=x=>Number(String(x).trim().replace(/\s/g,'').replace(',','.'));
+const num=x=>{const s=String(x).trim().replace(/\s/g,'').replace(',','.');return s===''?NaN:Number(s)};
 const watch=['OPEN','ORCL','AVAV','CIFR','IREN','SPY'];
 const ENDPOINT='https://tradepilot-market-data.alexvdslot.workers.dev/';
 let positions={},quotes={},lastResponse=null;
