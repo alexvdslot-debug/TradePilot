@@ -3,7 +3,7 @@ test('splash animates bars, exits and navigation works',async({page})=>{
  await page.goto('http://127.0.0.1:8765/app/index.html');
  await expect(page.locator('.splash-bar')).toHaveCount(3);
  await expect(page.locator('.splash')).toBeHidden({timeout:5000});
- await expect(page.getByRole('heading',{name:/Goedemorgen|Goedemiddag|Goedenavond/})).toBeVisible();
+ await expect(page.getByRole('heading',{name:/Goedemorgen|Goedemiddag|Goedenavond|Goedenacht/})).toBeVisible();
  await page.getByRole('navigation',{name:'Hoofdnavigatie'}).first().getByText('Kansen').click();
  await expect(page.getByRole('heading',{name:'Kansenradar'})).toBeVisible();
  await page.getByRole('button',{name:'Zoeken'}).click();
@@ -42,4 +42,14 @@ test('dashboard stays within 320px viewport',async({page})=>{
  await expect(page.locator('.splash')).toBeHidden({timeout:5000});
  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth);
  expect(overflow).toBe(false);
+});
+
+test('night greeting uses local time and updates when tab resumes',async({page})=>{
+ await page.clock.install({time:new Date('2026-10-09T23:30:00')});
+ await page.goto('http://127.0.0.1:8765/app/index.html');
+ await expect(page.locator('.splash')).toBeHidden({timeout:5000});
+ await expect(page.locator('#dashboard-greeting')).toHaveText('Goedenacht');
+ await page.clock.setFixedTime(new Date('2026-10-10T06:00:00'));
+ await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));
+ await expect(page.locator('#dashboard-greeting')).toHaveText('Goedemorgen');
 });
