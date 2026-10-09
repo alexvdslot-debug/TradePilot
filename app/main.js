@@ -10,7 +10,7 @@ const pageText={
  analyzer:['Trade Analyzer','Hier vergelijk je instap, stop-loss, koersdoelen, risico en kosten met je bestaande posities.'],
  journal:['Trade Journal','Leg je handelsplannen, uitvoeringen en evaluaties vast.']
 };
-function iconButton(label,symbol,id){return '<button type="button" class="icon-button" aria-label="'+label+'" id="'+id+'"'+svg(symbol)+'</button>'}
+function iconButton(label,symbol,id){return '<button type="button" class="icon-button" aria-label="'+label+'" id="'+id+'">'+svg(symbol)+'</button>'}
 function tabs(cls){return '<nav class="'+cls+'" aria-label="Hoofdnavigatie">'+pages.map(([id,label,symbol])=>'<a class="tab" href="./'+id+'" data-route="'+id+'" '+(route()===id?'aria-current="page"':'')+'><span aria-hidden="true">'+symbol+'</span>'+label+'</a>').join('')+'</nav>'}
 function greeting(){const h=new Date().getHours();return h<12?'Goedemorgen':h<18?'Goedemiddag':'Goedenavond'}
 function pageContent(id){if(id==='settings')return '<button class="back" data-back>← Terug</button><p class="eyebrow">Voorkeuren</p><h1>Instellingen</h1><p class="muted">De instellingenstructuur is beschikbaar. Opslaan volgt zodra de accountlaag is aangesloten.</p>'+[['Profiel en regio','Naam, taal en tijdzone'],['Valuta en portefeuille','EUR-weergave en USD-transacties'],['Risico en analyse','Risicobudget en analysevoorkeuren'],['Meldingen','Koers- en planmeldingen'],['Data en transparantie','Databronnen, vertraging en marktstatus'],['Privacy en account','Toegang en gegevensbeheer']].map(([title,desc])=>'<div class="settings-row"><strong>'+title+'</strong><span>'+desc+'</span></div>').join('');
@@ -36,7 +36,7 @@ function startApp(){
  splash.innerHTML='<div class="splash-brand"><svg class="splash-mark" viewBox="0 0 64 64" role="img" aria-label="TradePilot Pro logo"><rect width="64" height="64" rx="16" fill="#09111E"/><rect class="splash-bar bar-1" x="13" y="34" width="9" height="18" rx="4.5" fill="#55C7ED"/><rect class="splash-bar bar-2" x="27" y="23" width="9" height="29" rx="4.5" fill="#398DEB"/><rect class="splash-bar bar-3" x="41" y="12" width="9" height="40" rx="4.5" fill="#3773E7"/></svg><h1>TradePilot <span>Pro</span></h1><p id="splash-status" class="sr-only">App voorbereiden…</p></div>';
  document.body.appendChild(splash);
  const slow=setTimeout(()=>{const status=document.getElementById('splash-status');if(status){status.className='splash-status';status.textContent='App voorbereiden…'}},2000);
- try{render();requestAnimationFrame(()=>{const done=()=>{clearTimeout(slow);splash.remove()};if(matchMedia('(prefers-reduced-motion: reduce)').matches)done();else splash.addEventListener('animationend',e=>{if(e.target.classList.contains('bar-3'))done()},{once:true})})}
+ try{render();requestAnimationFrame(()=>{const done=()=>{clearTimeout(slow);splash.remove()};if(matchMedia('(prefers-reduced-motion: reduce)').matches)done();else splash.addEventListener('animationend',e=>{if(e.target.classList.contains('bar-3'))done()})})}
  catch(e){clearTimeout(slow);const status=document.getElementById('splash-status');if(status){status.className='splash-status';status.textContent='Starten mislukt. Ververs de pagina om opnieuw te proberen.'}throw e}
 }
 startApp();
