@@ -100,3 +100,9 @@ PF01 layout desktop 1440px en mobiel 320/375px conform spec. PF02 vijf-tab navig
 
 ## 12. Open beslissingen
 Definitieve loginprovider, exacte DEGIRO-CSV-formaten, rekening/marginmodel, kostenbasis voor belastingrapportage, licentie van iconenset, broker-FX-prioriteit en corporate-actions-feed moeten vóór de relevante bouwiteratie worden bevestigd. Dit document specificeert geen werkende integratie en claimt geen externe expertvalidatie.
+
+## Aanvulling v1.1 — EUR-waardering naast USD-posities
+- Boven de posities: **Totale portefeuillewaarde €** (indicatieve geconsolideerde EUR-waarde) en daaronder **USD-equivalent / USD-aandelenwaarde** met duidelijke labels. Voorbeeld uitsluitend als fictieve UI-data: € 30.000 ↔ $ 33.000 bij 1 EUR = $ 1,10; nooit hardcoderen.
+- Positierij: aantal, USD-koers, USD-marktwaarde, optioneel €-tegenwaarde. De USD-geldrekening en EUR-geldrekening blijven afzonderlijk zichtbaar; verkopen boeken USD en geen automatische EUR-conversie. FX-waarderingsverandering is geen gerealiseerde conversiekost.
+- Historische FX voor EUR-prestaties en actuele FX voor indicatieve waarde duidelijk onderscheiden; geen totaalbedrag bij ontbrekende koers zonder label 'onvolledig'.
+- Globale zoekbalk/bel beschikbaar via app-shell, Instellingen via profielmenu; detailgedrag zie `06-settings.md` en `07-global-search-notifications.md`.
