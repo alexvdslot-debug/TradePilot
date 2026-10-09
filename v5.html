@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#081321"><title>TradePilot 5 · Decision Desk</title>
+<style>
+:root{font:15px system-ui,-apple-system,sans-serif;color:#e9f2fc;background:#081321}*{box-sizing:border-box}body{margin:0}main{max-width:1140px;margin:auto;padding:20px 16px 80px}header,.row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}h1{font-size:clamp(26px,5vw,38px);margin:5px 0}h2{font-size:19px;margin:0 0 12px}h3{font-size:16px}p{color:#adc2d7;line-height:1.55}.muted,small{color:#a7bdd2}.eyebrow{color:#78d6f7;letter-spacing:2px;font-size:11px;font-weight:700}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,310px),1fr));gap:16px}.card{background:#112238;border:1px solid #2b4761;border-radius:16px;padding:18px;margin:14px 0;min-width:0}.card .card{margin:8px 0}.metric{font-size:26px;font-weight:800}.pill{display:inline-block;border:1px solid #45647b;border-radius:50px;padding:4px 9px;font-size:12px}.good{color:#80e3b3}.bad{color:#ffa5a5}.warn{color:#ffd18d}.field{margin:12px 0}label{display:block;font-size:12px;color:#bed3e8;margin-bottom:6px}input,select,button{width:100%;padding:11px 12px;border-radius:9px;font:inherit;background:#0b1a2c;color:#fff;border:1px solid #47647d}button{background:#176784;font-weight:700;cursor:pointer}button:disabled{opacity:.55;cursor:not-allowed}button.secondary{background:#243c54}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #73d8fa;outline-offset:2px}.out{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;background:#091a2b;border-radius:10px;padding:13px;min-height:55px}.status{padding:12px;border-left:3px solid #d3ad6a;background:#1b2b3e}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:560px}td,th{text-align:left;padding:10px;border-bottom:1px solid #2b4660}th{font-size:12px;color:#b7d1e6}a{color:#7cdbfa}footer{font-size:12px;color:#92abc1;margin-top:25px}@media(max-width:600px){main{padding:16px 12px 65px}td,th{padding:8px}}
+</style></head><body><main>
+<header><div><div class="eyebrow">TRADEPILOT · DECISION DESK · V5</div><h1>Van koers naar beslissing.</h1><p>Onderzoeksinstrument voor Amerikaanse aandelen · 1–5 handelsdagen</p></div><a href="./">Portefeuille V2 ↗</a></header>
+<div class="status" id="systemStatus" role="status" aria-live="polite">Marktdata nog niet gecontroleerd. Geen handelsbeslissingen op basis van onbevestigde koersen.</div>
+<div class="grid">
+<section class="card"><h2>01 · Portefeuille</h2><div id="portfolio" class="out">Lokale portefeuille wordt gelezen…</div><div class="row" style="margin-top:12px"><button id="reload" class="secondary" style="flex:1">Ververs portefeuille</button><button id="backup" class="secondary" style="flex:1">Exporteer back-up</button></div><p><small>Alleen lezen uit TradePilot V2 op dit apparaat. Geen cloudopslag en geen wijziging van transacties.</small></p></section>
+<section class="card"><h2>02 · Marktdatacontrole</h2><div id="feed" class="out">Wachten op data…</div><button id="refresh" style="margin-top:12px">Ververs marktdata</button><p><small>Koersen kunnen vertraagd zijn. Tijdstempels worden per aandeel gecontroleerd. Onbekende sessie of vertraging blijft zichtbaar als beperking.</small></p></section>
+</div>
+<section class="card"><div class="row"><h2>03 · Watchlist radar</h2><span class="pill">Geen automatische koopadviezen</span></div><p>Vergelijk koersverandering en liquiditeitsindicatie op basis van dezelfde feed. Dagmomentum alleen is geen bewezen 1–5-daags handelssignaal.</p><div class="table-wrap"><table><thead><tr><th>Symbool</th><th>Koers</th><th>Dag %</th><th>Volume</th><th>Koerstijd</th><th>Controle</th></tr></thead><tbody id="radar"><tr><td colspan="6">Marktdata laden…</td></tr></tbody></table></div></section>
+<div class="grid">
+<section class="card"><h2>04 · Scenario-analist</h2><p>Een controleerbare berekening met zelf gekozen koersniveaus, geen gegenereerde voorspelling.</p>
+<div class="field"><label for="symbol">Aandeel</label><select id="symbol"></select></div>
+<div class="grid"><div class="field"><label for="entry">Instapkoers ($)</label><input id="entry" inputmode="decimal" placeholder="2,50"></div><div class="field"><label for="stop">Stop-loss ($)</label><input id="stop" inputmode="decimal" placeholder="2,35"></div></div>
+<div class="grid"><div class="field"><label for="target1">Koersdoel 1 ($)</label><input id="target1" inputmode="decimal" placeholder="2,80"></div><div class="field"><label for="target2">Koersdoel 2 ($)</label><input id="target2" inputmode="decimal" placeholder="3,00"></div></div>
+<div class="grid"><div class="field"><label for="shares">Aantal aandelen</label><input id="shares" inputmode="numeric" placeholder="100"></div><div class="field"><label for="fees">Geschatte totale transactiekosten ($)</label><input id="fees" inputmode="decimal" value="2"></div></div>
+<button id="calculate">Bereken risico / rendement</button><div id="scenario" class="out" style="margin-top:12px">Vul zelf een scenario in.</div><p><small>USD-berekening, exclusief wisselkoersbeweging, spread, slippage en belasting. Stop-loss is geen gegarandeerde uitvoeringsprijs.</small></p></section>
+<section class="card"><h2>05 · Beslisdiscipline</h2><p>Een positie in OPEN vervangen omdat een ander aandeel stijgt, is geen strategie. Controleer eerst:</p><div id="discipline" class="out">1. Geldige koers met tijdstempel en sessie
+2. 5- en 15-minutentrend + VWAP, RSI en MACD
+3. Relatief volume en verhandelbaarheid
+4. Steun, weerstand en invalidering
+5. Risico/rendement na kosten en FX
+6. Sterkte versus OPEN én SPY
+
+Zonder deze bevestigingen: WACHTEN.</div><p><small>Intradaycandles en een gevalideerde signaalmotor zijn nog niet aangesloten. Daarom toont dit scherm geen gefingeerde instap- of koersdoelen.</small></p></section>
+</div>
+<section class="card"><h2>Gegevens, privacy en beperkingen</h2><p>Je portefeuille staat lokaal in je browser. Je API-key staat uitsluitend in Cloudflare. Deze versie verstuurt geen portefeuilletransacties naar de koersserver. De back-up is een lokaal JSON-bestand: bewaar dat privé.</p><p>Er is bewust nog geen publieke D1-database met jouw portefeuille geopend. Synchronisatie tussen apparaten vereist eerst gebruikersauthenticatie, autorisatie, migratie- en hersteltests. AI is een latere laag bovenop controleerbare data.</p></section>
+<footer>TradePilot 5 · Decision Desk · Onderzoekstool, geen orderuitvoering of gegarandeerde handelsadviezen. <a href="./v4.html">Vorige ontwikkelversie</a></footer>
+</main><script>
+"use strict";
+const $=id=>document.getElementById(id);
+const money=x=>new Intl.NumberFormat('nl-NL',{style:'currency',currency:'USD'}).format(x);
+const num=x=>Number(String(x).trim().replace(/\s/g,'').replace(',','.'));
+const watch=['OPEN','ORCL','AVAV','CIFR','IREN','SPY'];
+const ENDPOINT='https://tradepilot-market-data.alexvdslot.workers.dev/';
+let positions={},quotes={},lastResponse=null;
+function calculatePositions(transactions){
+ const p={};
+ for(const t of [...transactions].sort((a,b)=>String(a.date).localeCompare(String(b.date))||((a.seq||0)-(b.seq||0)))){
+  const symbol=String(t.t||'').toUpperCase(),q=Number(t.q),price=Number(t.price),fee=t.fee===undefined?0:Number(t.fee);
+  if(!/^[A-Z][A-Z0-9.\-]{0,11}$/.test(symbol)||!Number.isFinite(q)||q<=0||!Number.isFinite(price)||price<=0||!Number.isFinite(fee)||fee<0)throw Error('Ongeldige transactie');
+  const x=p[symbol]||(p[symbol]={q:0,cost:0,realized:0});
+  if(t.side==='buy'){x.q+=q;x.cost+=q*price+fee}
+  else if(t.side==='sell'){
+   if(q>x.q+1e-8)throw Error('Verkoop groter dan positie');
+   const basis=x.cost/x.q;x.realized+=q*(price-basis)-fee;x.cost-=q*basis;x.q-=q;
+   if(Math.abs(x.q)<1e-8){x.q=0;x.cost=0}
+  }else throw Error('Onbekend transactietype');
+ }
+ return p;
+}
+function readPortfolio(){
+ try{
+  const raw=JSON.parse(localStorage.getItem('tradepilot-v2-data')||'{}');
+  positions=calculatePositions(Array.isArray(raw.transactions)?raw.transactions:[]);
+  const active=Object.entries(positions).filter(([,p])=>p.q>0);
+  $('portfolio').textContent=active.length?active.map(([s,p])=>s+' · '+p.q.toLocaleString('nl-NL')+' aandelen · gem. '+money(p.cost/p.q)+' · gerealiseerd '+money(p.realized)).join('\n'):'Geen open posities op dit apparaat. Controleer TradePilot V2.';
+  const selected=$('symbol').value;
+  $('symbol').replaceChildren();
+  [...new Set([...active.map(([s])=>s),...watch])].forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;$('symbol').append(o)});
+  if(selected)$('symbol').value=selected;
+ }catch(e){positions={};$('portfolio').textContent='Portefeuille kon niet worden verwerkt: '+e.message}
+}
+function backup(){
+ try{
+  const raw=localStorage.getItem('tradepilot-v2-data');
+  if(!raw)throw Error('Geen V2-data aanwezig');
+  const parsed=JSON.parse(raw);
+  if(!Array.isArray(parsed.transactions))throw Error('Geen geldige transactielijst');
+  const blob=new Blob([JSON.stringify({format:'tradepilot-v2-backup',exportedAt:new Date().toISOString(),data:parsed},null,2)],{type:'application/json'});
+  const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='tradepilot-backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1000);
+  $('systemStatus').textContent='Back-up aangeboden als download. Controleer of het bestand daadwerkelijk is opgeslagen.';
+ }catch(e){$('systemStatus').textContent='Back-up mislukt: '+e.message}
+}
+function parseTimestamp(q){
+ const s=String(q.datetime||'');
+ if(!/^\d{4}-\d\d-\d\d/.test(s))return NaN;
+ // Twelve Data quotes can have exchange-local timestamps without an offset.
+ // A timezone-naive timestamp cannot be verified as recent.
+ if(!/[zZ]|[+-]\d\d:?\d\d$/.test(s))return NaN;
+ return Date.parse(s);
+}
+function quoteStatus(q){
+ if(!q||!Number.isFinite(q.price)||q.price<=0)return 'Ongeldige koers';
+ const stamp=parseTimestamp(q),age=Date.now()-stamp;
+ if(!Number.isFinite(stamp))return 'Tijdzone onbekend';
+ if(age< -300000)return 'Tijdstempel in toekomst';
+ if(age>20*60000)return 'Ouder dan 20 min';
+ return 'Tijdstempel recent*';
+}
+function td(textValue){const el=document.createElement('td');el.textContent=textValue;return el}
+function renderRadar(){
+ const rows=watch.map(s=>({s,q:quotes[s],status:quoteStatus(quotes[s])}));
+ const body=$('radar');body.replaceChildren();
+ rows.forEach(({s,q,status})=>{
+  const tr=document.createElement('tr');
+  [s,q&&Number.isFinite(q.price)?money(q.price):'—',q&&Number.isFinite(q.changePercent)?q.changePercent.toFixed(2)+'%':'—',q&&Number.isFinite(q.volume)?Math.round(q.volume).toLocaleString('nl-NL'):'—',q?.datetime||'—',status].forEach(v=>tr.append(td(v)));
+  body.append(tr);
+ });
+}
+async function loadMarket(){
+ $('feed').textContent='Beurskoersen worden opgehaald…';
+ $('refresh').disabled=true;
+ try{
+  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),12000);
+  let response;
+  try{response=await fetch(ENDPOINT+'?symbols='+encodeURIComponent(watch.join(',')),{cache:'no-store',signal:controller.signal})}finally{clearTimeout(timeout)}
+  if(!response.ok)throw Error('Koersserver HTTP '+response.status);
+  const data=await response.json();
+  if(!data||typeof data.quotes!=='object'||!data.quotes)throw Error('Onverwacht antwoord van koersserver');
+  quotes=data.quotes;lastResponse=data;
+  const valid=watch.filter(s=>quoteStatus(quotes[s])==='Tijdstempel recent*');
+  const available=watch.filter(s=>quotes[s]&&Number.isFinite(quotes[s].price));
+  $('feed').textContent='Bron: '+String(data.provider||'onbekend')+'\nOntvangen: '+String(data.asOf||'onbekend')+'\nKoersen: '+available.length+'/'+watch.length+'\nTijdzone expliciet en recent: '+valid.length+'/'+watch.length+'\nRealtime/vertraagd: niet onafhankelijk vastgesteld\nMarktsessie: niet onafhankelijk vastgesteld\n* Recent betekent niet automatisch realtime.';
+  $('systemStatus').textContent=valid.length?'Marktdata ontvangen; '+valid.length+' tijdstempels recent. Vertraging, sessie en technische signalen zijn nog niet onafhankelijk bevestigd.':'Koersen ontvangen, maar geen tijdstempels betrouwbaar als recent te bevestigen. Geen handelssignaal.';
+ }catch(e){quotes={};lastResponse=null;$('feed').textContent='Marktdata niet beschikbaar: '+e.message;$('systemStatus').textContent='Geen geverifieerde marktdata. Wacht met beslissingen op basis van deze app.'}
+ finally{$('refresh').disabled=false;renderRadar()}
+}
+function scenario(entry,stop,target1,target2,shares,fees){
+ if(![entry,stop,target1,target2,shares,fees].every(Number.isFinite)||entry<=0||stop<=0||stop>=entry||target1<=entry||target2<target1||!Number.isSafeInteger(shares)||shares<=0||fees<0)throw Error('Gebruik positieve bedragen, hele aandelen, stop onder instap en koersdoelen boven instap.');
+ const risk=(entry-stop)*shares+fees,gain1=(target1-entry)*shares-fees,gain2=(target2-entry)*shares-fees;
+ if(risk<=0)throw Error('Risico moet positief zijn');
+ return {risk,gain1,gain2,rr1:gain1/risk,rr2:gain2/risk,capital:entry*shares+fees};
+}
+function calculate(){
+ try{
+  const s=scenario(num($('entry').value),num($('stop').value),num($('target1').value),num($('target2').value),num($('shares').value),num($('fees').value));
+  $('scenario').textContent='Aandeel: '+$('symbol').value+'\nInzet inclusief geschatte kosten: '+money(s.capital)+'\nRisico tot stop incl. kosten: '+money(s.risk)+'\nPotentieel resultaat doel 1: '+money(s.gain1)+' · R/R '+s.rr1.toFixed(2)+'\nPotentieel resultaat doel 2: '+money(s.gain2)+' · R/R '+s.rr2.toFixed(2)+'\nInvalidering: koers onder stop, of onvoldoende technische bevestiging.\nDit is een hypothetisch scenario; niet gevalideerd door een intradayscanner.';
+ }catch(e){$('scenario').textContent='Controleer de invoer: '+e.message}
+}
+$('reload').onclick=readPortfolio;$('backup').onclick=backup;$('refresh').onclick=loadMarket;$('calculate').onclick=calculate;
+readPortfolio();renderRadar();loadMarket();
+</script></body></html>
