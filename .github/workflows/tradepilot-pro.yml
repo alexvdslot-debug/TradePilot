@@ -1,0 +1,22 @@
+name: TradePilot Pro quality gates
+on:
+  push:
+    branches: [tradepilot-pro-rebuild]
+  pull_request:
+    paths: ['pro/**', 'worker/**', '.github/workflows/tradepilot-pro.yml']
+permissions:
+  contents: read
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify indicator and Worker tests
+        run: node --test pro/indicators.test.mjs worker/index.test.mjs
+      - name: Check JavaScript syntax
+        run: |
+          node --check pro/indicators.mjs
+          node --check worker/src/index.mjs
