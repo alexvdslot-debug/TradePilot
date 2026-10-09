@@ -19,4 +19,4 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Browser smoke tests
-        run: npx playwright test tests/app-shell.spec.cjs --config=playwright.config.cjs
+        run: npx playwright test --config=app/playwright.config.cjs
