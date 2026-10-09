@@ -31,4 +31,12 @@ function renderSearch(){const layer=document.createElement('div');layer.classNam
 function renderNotifications(){const layer=document.createElement('div');layer.className='overlay';layer.setAttribute('role','dialog');layer.setAttribute('aria-modal','true');layer.setAttribute('aria-label','Meldingen');layer.innerHTML='<div class="overlay-inner"><div class="overlay-top"><h1>Meldingen</h1><button class="primary" id="close-notifications">Sluiten</button></div><p class="notice">Er is nog geen meldingenservice aangesloten.</p></div>';app.appendChild(layer);layer.querySelector('button').onclick=closeOverlay}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&(searchOpen||notificationOpen))closeOverlay();if(e.key==='Tab'&&(searchOpen||notificationOpen)){const layer=document.querySelector('.overlay');const focusables=[...layer.querySelectorAll('button,input')];const first=focusables[0],last=focusables.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}});
 window.addEventListener('popstate',()=>{searchOpen=false;notificationOpen=false;render()});
-render();
+function startApp(){
+ const splash=document.createElement('div');splash.className='splash';splash.setAttribute('role','status');splash.setAttribute('aria-live','polite');
+ splash.innerHTML='<div class="splash-brand"><img src="./assets/tradepilot-mark.svg" width="88" height="88" alt=""><h1>TradePilot <span>Pro</span></h1><p id="splash-status" class="sr-only">App voorbereiden…</p></div>';
+ document.body.appendChild(splash);
+ const slow=setTimeout(()=>{const status=document.getElementById('splash-status');if(status){status.className='splash-status';status.textContent='App voorbereiden…'}},2000);
+ try{render();requestAnimationFrame(()=>requestAnimationFrame(()=>{clearTimeout(slow);splash.remove()}))}
+ catch(e){clearTimeout(slow);const status=document.getElementById('splash-status');if(status){status.className='splash-status';status.textContent='Starten mislukt. Ververs de pagina om opnieuw te proberen.'}throw e}
+}
+startApp();
