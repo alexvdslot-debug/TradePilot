@@ -25,3 +25,10 @@ Het splashscreen is een **app-breed opstartcomponent**, géén Dashboard-onderde
 
 ## Test- en reviewcriteria
 SP01 cold start toont splash vóór privé-UI. SP02 warm route change toont geen splash. SP03 auth success → Dashboard, auth failure → Login. SP04 netwerkfout/timeout → fout + retry. SP05 geen onnodige vaste vertraging. SP06 reduced-motion en keyboard/screenreader. SP07 320/375/1440px plus 200% zoom zonder overflow. SP08 geen privédata, geen fictieve marktdata en geen API secrets. SP09 iOS Safari, Android Chrome en desktop browser screenshot-/E2E-validatie vereist vóór 'af'.
+
+## Goedgekeurde ontwerpbeslissing — 9 oktober 2026
+- **Definitief gekozen richting:** premium donkerblauw splashscreen (`#09111E`) met prominent, gecentreerd TradePilot Pro-beeldmerk en productnaam. Dit vormt bewust een contrast met de lichte hoofdschermen.
+- Logo is een professioneel, herkenbaar vectorbeeldmerk (geen emoji, generiek pictogram of tijdelijke monogram als definitief logo). Dezelfde goedgekeurde merkasset wordt gebruikt in splashscreen, app-header en app-icoon; geschikt voor mobiel en desktop.
+- Accent cyaan (`#55C7ED`), subtiele gloed en één korte, rustige animatie; geen drukke effecten, extra slogans of onnodige wachttijd.
+- Visuele acceptatie: in de definitieve overzichtsmock-up moet dit splashscreen als afzonderlijk opstartscherm zijn opgenomen. Het ontwerp is goedgekeurd als richting; het specifieke definitieve logo moet nog visueel worden beoordeeld.
+- Reviewpunten voor overige schermen: consistente header met herkenbare, voldoende grote zoek-, bel- en instellingeniconen; vijf uniforme mobiele navigatie-iconen; persoonlijke tijdsafhankelijke Dashboard-begroeting met profielnaam. Deze punten zijn niet van toepassing als zichtbare UI op het splashscreen.
