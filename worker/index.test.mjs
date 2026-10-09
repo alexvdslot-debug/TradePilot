@@ -1,0 +1,12 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import worker from './src/index.mjs';
+const req=(path,headers={})=>new Request('https://api.example.test'+path,{headers});
+const env={CLIENT_ACCESS_TOKEN:'test-token',TWELVE_DATA_API_KEY:'dummy',ALLOWED_ORIGIN:'https://alexvdslot-debug.github.io'};
+test('health has no secret values',async()=>{const r=await worker.fetch(req('/health'),env);assert.equal(r.status,200);assert.doesNotMatch(await r.text(),/dummy|test-token/)});
+test('candles require token',async()=>{const r=await worker.fetch(req('/api/candles?symbol=OPEN'),env);assert.equal(r.status,401)});
+test('bad symbol rejected before provider call',async()=>{const r=await worker.fetch(req('/api/candles?symbol=BAD%20VALUE',{authorization:'Bearer test-token'}),env);assert.equal(r.status,400)});
+test('bad interval rejected before provider call',async()=>{const r=await worker.fetch(req('/api/candles?symbol=OPEN&interval=1min',{authorization:'Bearer test-token'}),env);assert.equal(r.status,400)});
+test('missing provider key fails closed',async()=>{const r=await worker.fetch(req('/api/candles?symbol=OPEN',{authorization:'Bearer test-token'}),{...env,TWELVE_DATA_API_KEY:''});assert.equal(r.status,503)});
+test('untrusted origin receives no allow-origin header',async()=>{const r=await worker.fetch(req('/health',{origin:'https://evil.example'}),env);assert.equal(r.headers.get('access-control-allow-origin'),null)});
+test('trusted origin receives exact allow-origin header',async()=>{const r=await worker.fetch(req('/health',{origin:env.ALLOWED_ORIGIN}),env);assert.equal(r.headers.get('access-control-allow-origin'),env.ALLOWED_ORIGIN)});
