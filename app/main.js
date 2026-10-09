@@ -2,7 +2,7 @@ const pages=[['dashboard','Dashboard','home'],['portfolio','Portfolio','portfoli
 const app=document.getElementById('app');
 let searchOpen=false,notificationOpen=false,searchCategory='Aandelen',lastFocus=null;
 const svg=id=>'<svg class="ui-icon" aria-hidden="true"><use href="./assets/icons.svg#'+id+'"></use></svg>';
-const route=()=>location.pathname.replace(/\/$/,'').split('/').pop()||'dashboard';
+const route=()=>{const last=location.pathname.replace(/\/$/,'').split('/').pop();return !last||last==='index.html'||last==='app'?'dashboard':last};
 const pageText={
  dashboard:['Jouw tradingoverzicht','Hier komen je portefeuille, marktstatus en maximaal drie onderbouwde kansen samen.'],
  portfolio:['Jouw portefeuille','Transacties, beschikbare cash, posities en EUR/USD-berekeningen worden hier gekoppeld.'],
