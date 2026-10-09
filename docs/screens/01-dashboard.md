@@ -195,3 +195,47 @@ Bell toont een ongelezen teller **uitsluitend** uit echte, aan de gebruiker geko
 
 ### Extra acceptatiecriteria
 D11 dagdeelbegroeting correct bij 04:59/05:00/11:59/12:00/17:59/18:00/22:59/23:00, tijdzones en app-resume. D12 marktstatus correct bij NYSE-holidays, DST, early close en sessiegrenzen. D13 zoekresultaten zijn echt, navigeerbaar, keyboardtoegankelijk; fout/429/offline getest. D14 bel toont uitsluitend geautoriseerde records, echte unread counts en read-state; cross-user access onmogelijk. D15 splash sluit zonder kunstmatige wachttijd, ook bij offline of feedstoring, en respecteert reduced motion. D16 alle UI-acties hebben werkende handlers; decoratieve placeholders mogen niet als functionele controls worden gepresenteerd.
+
+
+## Openingsbeleving en dynamische interface — aanvullende productspecificatie (9 oktober 2026)
+
+### Persoonlijke begroeting
+- Dashboard toont een lokale, gepersonaliseerde begroeting met de door de gebruiker ingestelde weergavenaam, bijvoorbeeld 'Goedenavond, Alexander'. Naam nooit uit een onbevestigde bron afleiden.
+- Begroeting gebruikt de ingestelde gebruikers-tijdzone (standaard browserzone, met handmatige keuze). Tijdvakken: 05:00–11:59 'Goedemorgen', 12:00–17:59 'Goedemiddag', 18:00–22:59 'Goedenavond', 23:00–04:59 'Goedenacht'. Dit zijn productkeuzes, geen universele definities.
+- Bij openen, hervatten uit achtergrond, wijziging van tijdzone en minimaal elke minuut wordt de tekst herberekend; geen reload nodig. Zonder naam: 'Goedenavond' zonder aanspreekvorm. Bij ongeldige klok: neutraal 'Welkom bij TradePilot'.
+
+### Marktstatus — echte beurskalender, niet alleen een klok
+- Voor Amerikaanse aandelen wordt America/New_York gebruikt, onafhankelijk van Europese zomer-/wintertijd. Reguliere sessie normaal 09:30–16:00 ET; premarket/afterhours alleen tonen indien ondersteund door de dataprovider en de marktconfiguratie.
+- Weekenden, Amerikaanse beursholidays, uitzonderlijke sluitingsdagen en vervroegde sluitingen volgen een onderhouden NYSE/Nasdaq handelskalender. Een vaste Nederlandse sluitingstijd is verboden.
+- UI status: 'Premarket', 'Market Open', 'After-Hours', 'Market Closed', of 'Status onbekend'. Toon 'Sluit om HH:MM' uitsluitend als de volgende kalendergrens bevestigd is, met lokale tijdzone en ET als detail.
+- Status actualiseert automatisch bij sessieovergangen, heropenen van de app en reconnect; niet uitsluitend bij een handmatige refresh. Bij ontbrekende kalender/providerbevestiging: 'Status onbekend', geen verzonnen 'open'.
+- **Beursstatus is niet hetzelfde als koersactualiteit**: iedere quote houdt apart bron, timestamp, sessie en realtime/vertraagd/onbekend label.
+
+### Premium splash en starttransitie
+- Bij een koude start: diep marine canvas #09111E met centraal vector TP-monogram, TradePilot Pro woordmerk en subtiele cyaan lichtlijn; 150–250ms fade/scale wanneer app gereed is. Geen decoratieve nepkoers of winstclaim.
+- Splash is een laadstatus, geen verplichte wachttijd. Bij trage authenticatie of netwerk verschijnt na korte tijd duidelijke voortgangstekst ('Dashboard voorbereiden…') en vervolgens een herstelbare foutstaat indien nodig.
+- Bij reduced-motion geen schaalanimatie; splash mag nooit login of navigatie blokkeren. Bij terugkeer naar al geopende app geen onnodige splash.
+- Assets als geoptimaliseerde SVG/WEBP met gecontroleerde licentie, geen zware video. iOS PWA icon, apple-touch-icon, favicon en maskable manifest icon in dezelfde beeldtaal.
+
+### Functionele zoekfunctie
+- Zoekicoon opent echte zoekinterface met ticker/bedrijfsnaam, toetsenbordfocus, debounce, loading, geen-resultaat en netwerkfout.
+- Resultaten uitsluitend uit gevalideerde symbol-search API; klik opent Radar of Analyzer met gekozen instrument-ID. Nooit een zoekveld dat alleen een visuele mock-up is.
+- Symbolen worden server-side gevalideerd; zoekopdrachten worden niet met holdings of persoonsgegevens verrijkt.
+
+### Functionele notificatiebel
+- Bel opent een toegankelijke notificatielijst met echte opgeslagen waarschuwingen: alertconditie, ticker, eventtijd, bron en gelezen/ongelezen-status.
+- Teller uitsluitend gebaseerd op ongelezen records; leeg: 'Geen nieuwe meldingen'. Acties 'Markeer als gelezen', 'Open alert' en 'Instellingen' hebben een server-side bevestigde status.
+- In-app notificaties en pushmeldingen zijn verschillende functies. Push wordt pas aangeboden nadat permissie, kanaal en infrastructuur daadwerkelijk werken; geen notificatiebelofte zonder deliverymechanisme.
+- Rate limiting, gebruikersisolatie, auditbare statuswijzigingen, retry en deduplicatie verplicht.
+
+### Ontwerp- en implementatiechecklist
+- OS01 tijdvakbegroeting schakelt correct om zonder reload en houdt rekening met gebruikers-tijdzone.
+- OS02 marktstatus klopt op gewone handelsdag, weekend, feestdag, early close en tijdens EU/VS DST-overgang.
+- OS03 status en quote-versheid worden apart getoond; feedfout levert geen valse marktstatus.
+- OS04 splash heeft SVG-logo, reduced-motion fallback, snelle start en foutafhandeling.
+- OS05 zoekfunctie heeft echte API, keyboardnavigatie, lege/error states en correcte route.
+- OS06 notificatiebel toont uitsluitend echte, user-scoped records en juiste ongelezen teller.
+- OS07 tests voor browser-heropenen, background/resume, offline, 401/429 en mobiel safe-area.
+- OS08 geen iconen, afbeeldingen of CTA's zonder werkende functie; screenshots worden tegen implementatie vergeleken.
+
+**Reviewstatus:** technisch haalbaar met frontend, betrouwbare markt-/kalenderdata en backend voor zoeken/notificaties; nog niet geïmplementeerd of E2E getest. Exacte provider-entitlements, alerts-backend en branding-assets moeten bij de bouw worden gevalideerd.
