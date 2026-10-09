@@ -1,0 +1,16 @@
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
+const html=fs.readFileSync(path.join(__dirname,'../v5.html'),'utf8');
+const js=html.split('<script>')[1].split('</script>')[0];
+new vm.Script(js,{filename:'v5.html'});
+const getFunction=(name,next)=>{const a=js.indexOf('function '+name+'('),b=js.indexOf(next,a);if(a<0||b<0)throw Error('Function not found: '+name);return vm.runInNewContext(js.slice(a,b)+';'+name)};
+const scenario=getFunction('scenario','function calculate(');
+const portfolio=getFunction('calculatePositions','function readPortfolio(');
+const tx=(side,q,price,seq,date='2026-10-09',fee=0)=>({t:'OPEN',side,q,price,seq,date,fee});
+test('v5 syntax valid',()=>assert.ok(js.length>1000));
+test('v5 cost basis and fees',()=>{const p=portfolio([tx('buy',100,2.5,1,'2026-10-09',1)]).OPEN;assert.equal(p.q,100);assert.equal(p.cost,251)});
+test('v5 dates override sequence',()=>{const p=portfolio([tx('sell',1,3,1),tx('buy',2,2,99,'2026-10-08')]).OPEN;assert.equal(p.realized,1)});
+test('v5 oversell rejected',()=>assert.throws(()=>portfolio([tx('sell',1,2,1)]),/Verkoop groter/));
+test('v5 scenario calculates fees and R/R',()=>{const r=scenario(10,9,12,14,100,4);assert.equal(r.risk,104);assert.equal(r.gain1,196);assert.equal(r.gain2,396);assert.ok(Math.abs(r.rr1-196/104)<1e-10)});
+test('v5 scenario rejects fractional shares',()=>assert.throws(()=>scenario(10,9,12,14,1.5,4),/hele aandelen/));
+test('v5 scenario rejects upside stop',()=>assert.throws(()=>scenario(10,11,12,14,100,4),/stop onder instap/));
+test('v5 scenario rejects negative fees',()=>assert.throws(()=>scenario(10,9,12,14,100,-1),/hele aandelen/));
