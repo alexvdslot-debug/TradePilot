@@ -13,3 +13,14 @@ test('oversell is rejected',()=>assert.throws(()=>calculatePositions([tx('sell',
 test('invalid fee is rejected',()=>assert.throws(()=>calculatePositions([tx('buy',1,2,-1)]),/Ongeldige transactie/));
 test('invalid price is rejected',()=>assert.throws(()=>calculatePositions([tx('buy',1,0)]),/Ongeldige transactie/));
 test('transaction order is deterministic',()=>{const p=calculatePositions([tx('sell',1,3,0,2),tx('buy',1,2,0,1)]).OPEN;assert.equal(p.realized,1)});
+
+test('chronological sorting takes priority over sequence across dates',()=>{
+ const a={...tx('buy',2,2,0,99),date:'2026-10-08'};
+ const b={...tx('sell',1,3,0,1),date:'2026-10-09'};
+ const p=calculatePositions([b,a]).OPEN;
+ assert.equal(p.q,1);assert.equal(p.realized,1);
+});
+test('same-day transactions sort by sequence',()=>{
+ const p=calculatePositions([tx('sell',1,3,0,20),tx('buy',1,2,0,10)]).OPEN;
+ assert.equal(p.q,0);assert.equal(p.realized,1);
+});
