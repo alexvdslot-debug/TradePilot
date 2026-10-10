@@ -19,7 +19,6 @@ function db(){
   if(sql.startsWith('UPDATE user_settings')){const row=settings.get(args[5]);if(!row||row.version!==args[6])return {meta:{changes:0}};settings.set(args[5],{display_name:args[0],locale:args[1],timezone:args[2],display_currency:args[3],risk_budget_eur:args[4],version:row.version+1});return {meta:{changes:1}}}
   throw Error('unexpected mutation '+sql)
  }}}}
- }
 }
 const env={DB:db(),ACCESS_TEAM_DOMAIN:'team.cloudflareaccess.com',ACCESS_AUD:'app-aud',ALLOWED_ORIGIN:'https://alexvdslot-debug.github.io'};
 const originalFetch=globalThis.fetch;
