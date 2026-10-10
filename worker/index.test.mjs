@@ -10,3 +10,16 @@ test('bad interval rejected before provider call',async()=>{const r=await worker
 test('missing provider key fails closed',async()=>{const r=await worker.fetch(req('/api/candles?symbol=OPEN',{authorization:'Bearer test-token'}),{...env,TWELVE_DATA_API_KEY:''});assert.equal(r.status,503)});
 test('untrusted origin receives no allow-origin header',async()=>{const r=await worker.fetch(req('/health',{origin:'https://evil.example'}),env);assert.equal(r.headers.get('access-control-allow-origin'),null)});
 test('trusted origin receives exact allow-origin header',async()=>{const r=await worker.fetch(req('/health',{origin:env.ALLOWED_ORIGIN}),env);assert.equal(r.headers.get('access-control-allow-origin'),env.ALLOWED_ORIGIN)});
+
+test('B3 preflight only permits configured origin',async()=>{
+ const ok=await worker.fetch(new Request('https://api.example.test/api/v1/settings',{method:'OPTIONS',headers:{origin:env.ALLOWED_ORIGIN}}),env);
+ assert.equal(ok.status,204);assert.equal(ok.headers.get('access-control-allow-origin'),env.ALLOWED_ORIGIN);
+ assert.equal(ok.headers.get('access-control-allow-credentials'),'true');
+ const blocked=await worker.fetch(new Request('https://api.example.test/api/v1/settings',{method:'OPTIONS',headers:{origin:'https://evil.example'}}),env);
+ assert.equal(blocked.status,403);
+});
+test('B3 missing Access/D1 fails closed without data',async()=>{
+ const r=await worker.fetch(req('/api/v1/settings',{origin:env.ALLOWED_ORIGIN}),env);
+ assert.equal(r.status,503);
+ assert.equal(r.headers.get('access-control-allow-origin'),env.ALLOWED_ORIGIN);
+});
