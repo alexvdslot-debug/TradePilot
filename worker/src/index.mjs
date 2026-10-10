@@ -1,4 +1,5 @@
 import {settingsApi} from './b3-settings.mjs';
+import {siteAssets} from './site-assets.mjs';
 /**
  * TradePilot Pro market-data edge. Deploy as Cloudflare Worker.
  * Set TWELVE_DATA_API_KEY as a Worker secret and ALLOWED_ORIGIN as a variable.
@@ -9,6 +10,14 @@ const INTERVALS=new Set(['5min','15min']);
 function response(body,status=200,headers={}){return new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff',...headers}})}
 export default {async fetch(request,env){
   const apiPath=new URL(request.url).pathname;
+  if(apiPath==='/'&&request.method==='GET')return Response.redirect(new URL('/app/',request.url),302);
+  if(apiPath==='/app'||apiPath==='/app/'||apiPath.startsWith('/app/')){
+    if(request.method!=='GET'&&request.method!=='HEAD')return response({error:'Method not allowed'},405);
+    const assetPath=apiPath==='/app'||apiPath==='/app/'?'/app/index.html':apiPath;
+    if(!Object.prototype.hasOwnProperty.call(siteAssets,assetPath))return response({error:'Not found'},404);
+    const mime=assetPath.endsWith('.html')?'text/html; charset=utf-8':assetPath.endsWith('.js')?'text/javascript; charset=utf-8':assetPath.endsWith('.css')?'text/css; charset=utf-8':'image/svg+xml';
+    return new Response(request.method==='HEAD'?null:siteAssets[assetPath],{status:200,headers:{'content-type':mime,'cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'strict-origin-when-cross-origin','x-frame-options':'DENY','content-security-policy':"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"}});
+  }
   if(apiPath.startsWith('/api/v1/')){
     const origin=request.headers.get('origin');
     const trusted=Boolean(origin&&env.ALLOWED_ORIGIN&&origin===env.ALLOWED_ORIGIN);
