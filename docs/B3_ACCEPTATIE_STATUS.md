@@ -27,3 +27,13 @@
 **Belangrijk:** Zonder echte Access/D1-configuratie retourneert de B3 API bewust HTTP 503. Geen schijn-login, geen browser-side secrets en geen gedeelde token als gebruikersauthenticatie.
 
 Bronnen: `docs/TECHNISCH_BOUWPLAN_V1.md`, `docs/architecture/02-api-datamodel-contracten.md`, `docs/PRODUCT_DESIGN_DOCUMENT.md`.
+
+## Cloudflare Access geactiveerd en geverifieerd (10 oktober 2026)
+- Zero Trust-organisatie: `misty-surf-09c1.cloudflareaccess.com`.
+- Self-hosted Access-app: `TradePilot Pro Private API`, ID `8f89ad13-1777-4530-a182-de9837ff17fb`, domein `tradepilot-pro-api.alexvdslot.workers.dev`.
+- Toegangsbeleid `Owner only` staat op exact één e-mailadres (niet hier herhaald).
+- Cloudflare One-time PIN identity provider bestaat.
+- Worker-bindings `ACCESS_TEAM_DOMAIN`, `ACCESS_AUD`, `ALLOWED_ORIGIN` en `DB` zijn via Cloudflare API bevestigd.
+- Frontend heeft login- en logoutlinks op het API-domein; CI valideert de URLs.
+
+**Open acceptatierisico:** de UI wordt op een ander domein geserveerd dan de Access-beveiligde API. Cross-site `fetch(...,{credentials:'include'})` kan in Safari door third-party cookiebeleid mislukken, ook na geslaagde Access-login. De definitieve oplossing is UI en API via hetzelfde site-/originbeleid aanbieden of een expliciet veilig alternatief ontwerpen. Dit is niet end-to-end geverifieerd; B3 niet als gereed markeren totdat iPhone Safari en desktop daadwerkelijk inloggen, instellingen wijzigen, reload en uitloggen aantonen.
