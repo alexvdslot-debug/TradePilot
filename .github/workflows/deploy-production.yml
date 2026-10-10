@@ -32,6 +32,10 @@ jobs:
           npm run build
           npm run check
           npm test
+      - name: Install browser engines for mobile UX gate
+        run: npx playwright install --with-deps chromium webkit
+      - name: Validate mobile UX in real browsers
+        run: npm run test:browser
       - name: Install Cloudflare Wrangler
         run: npm install --no-save wrangler@4
       - name: Validate complete Worker bundle offline
