@@ -38,6 +38,10 @@ jobs:
         working-directory: worker
         run: npx wrangler deploy --config wrangler.toml --dry-run --outdir ../.wrangler-dry-run
 
+      - name: Bundle private background provider without deploying
+        working-directory: worker
+        run: npx wrangler deploy --config provider.wrangler.toml --dry-run --outdir ../.wrangler-provider-dry-run
+
   browser:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -60,3 +64,4 @@ jobs:
           name: tradepilot-browser-test-results
           path: test-results/
           if-no-files-found: ignore
+

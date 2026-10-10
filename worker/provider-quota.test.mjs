@@ -5,12 +5,12 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {spawnSync,execFile} from 'node:child_process';
 import {generateKeyPairSync,createSign,webcrypto} from 'node:crypto';
-import {consumeProviderQuota,PROVIDER_QUOTA_SQL} from './src/provider-quota.mjs';
+import {consumeProviderQuota,PROVIDER_QUOTA_SQL,BACKGROUND_PROVIDER_QUOTA_SQL} from './src/provider-quota.mjs';
 import {providerAdapter} from './src/provider-adapter.mjs';
 import {marketApi} from './src/market-api.mjs';
 import legacy from './market-data.js';
 if(!globalThis.crypto)globalThis.crypto=webcrypto;
-const schema=readFileSync(new URL('./migrations/0004_provider_quota.sql',import.meta.url),'utf8');
+const schema=readFileSync(new URL('./migrations/0004_provider_quota.sql',import.meta.url),'utf8')+readFileSync(new URL('./migrations/0006_background_alerts.sql',import.meta.url),'utf8');
 const queryPython=`import sys,json,sqlite3
 data=json.load(sys.stdin)
 connection=sqlite3.connect(sys.argv[1],timeout=15)
@@ -43,7 +43,7 @@ test('actual SQLite atomic admissions across independent connections permit exac
 });
 test('actual SQLite enforces 800 daily calls across minute windows, UTC day reset, and denied calls do not increment',()=>{
  const result=python(`import sys,json,sqlite3
-p=json.load(sys.stdin);c=sqlite3.connect(':memory:');c.executescript(p['schema']);c.executescript(p['schema'])
+p=json.load(sys.stdin);c=sqlite3.connect(':memory:');c.executescript(p['schema'])
 sql=p['sql'];minute=p['minute'];day=minute//1440
 allowed=0
 for offset in range(100):
@@ -118,4 +118,30 @@ test('external provider 429 remains explicit even with a non-JSON response body'
  globalThis.fetch=async()=>{calls++;return new Response('private provider diagnostics',{status:429})};t.after(()=>{globalThis.fetch=original});
  const response=await legacy.fetch(new Request('https://legacy.test/?symbols=OPEN'),{...auth,MARKET_QUOTA_DB:db.binding});
  assert.equal(response.status,429);const text=await response.text();assert.equal(JSON.parse(text).errors.OPEN,'PROVIDER_QUOTA');assert.equal(text.includes('private provider diagnostics'),false);assert.equal(calls,1);assert.equal(db.calls,1);
+});
+test('background admission atomically reserves four minute slots for interactive requests',async t=>{
+ const db=database(t);const results=await Promise.all(Array.from({length:12},()=>consumeProviderQuota({MARKET_QUOTA_DB:db.binding},{now:base,background:true})));
+ assert.equal(results.filter(row=>row.allowed).length,4);
+ for(let i=0;i<4;i++)assert.equal((await consumeProviderQuota({MARKET_QUOTA_DB:db.binding},{now:base})).allowed,true);
+ assert.equal((await consumeProviderQuota({MARKET_QUOTA_DB:db.binding},{now:base})).status,429);
+ const next=await consumeProviderQuota({MARKET_QUOTA_DB:db.binding},{now:base+60000,background:true});assert.equal(next.minuteCount,1);assert.equal(next.dayCount,9);
+});
+test('background never uses local fallback and configured errors fail closed',async()=>{
+ assert.equal((await consumeProviderQuota({},{background:true})).status,503);
+ assert.equal((await consumeProviderQuota({MARKET_QUOTA_DB:{prepare(){throw Error('private')}}},{background:true})).status,503);
+});
+test('actual SQLite background daily cap is 300 and shared ceiling leaves 200 interactive requests',()=>{
+ const result=python(`import sys,json,sqlite3
+p=json.load(sys.stdin);c=sqlite3.connect(':memory:');c.executescript(p['schema']);day=p['day'];minute=day*1440
+for i in range(300): assert c.execute(p['background'],('twelve-data',minute+i//4,day)).fetchone() is not None
+assert c.execute(p['background'],('twelve-data',minute+100,day)).fetchone() is None
+assert c.execute('SELECT background_day_count FROM provider_quota').fetchone()[0]==300
+for i in range(500): assert c.execute(p['normal'],('twelve-data',minute+100+i//8,day,8,800)).fetchone() is not None
+assert c.execute(p['normal'],('twelve-data',minute+200,day,8,800)).fetchone() is None
+# Fresh day: interactive use first600. Background must not consume reserved remainder.
+c.execute(p['normal'],('twelve-data',(day+1)*1440,day+1,8,800))
+c.execute('UPDATE provider_quota SET day_count=600')
+assert c.execute(p['background'],('twelve-data',(day+1)*1440+1,day+1)).fetchone() is None
+print(json.dumps({'day':800,'background':300,'reserve':200}))
+`,{schema,background:BACKGROUND_PROVIDER_QUOTA_SQL,normal:PROVIDER_QUOTA_SQL,day:Math.floor(base/86400000)});assert.deepEqual(result,{day:800,background:300,reserve:200});
 });

@@ -55,3 +55,7 @@ B7 lessons:
 B7 local verification: `node --test tests/journal.test.mjs tests/alerts.test.mjs worker/private-state.test.mjs` passed 20 tests, 0 failed (6 journal, 5 alerts, 9 private-state). These are local unit/API integration checks; frontend workflows, production persistence, and production alert evaluation require separate end-to-end verification. An initial journal run preceded the ledger's pending opt-in realization extension and failed on its absent output; rerunning after that dependency became available passed all journal scenarios.
 
 Alert review correction verification: `node --test tests/alerts.test.mjs` passed **8 tests, 0 failed**, including explicit refusal for missing/expired entitlement, unverified display rights/source, unknown/closed/current status, stale status, wrong provider/exchange, and nonauthoritative clock evidence.
+
+## Background extension (2026-10-10)
+
+The preceding foreground-only delivery statements describe the initial release. A separately opted-in, globally disabled-by-default native scheduled engine now stores bell notices for the owner's next visit. It reuses the exact foreground evidence/one-shot gates and owner snapshot CAS, without public privileged routes, owner JWT impersonation or external delivery. Existing state fields and legacy alert rows are unchanged. See [background implementation and verification](BACKGROUND_ALERT_IMPLEMENTATION.md).

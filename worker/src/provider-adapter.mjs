@@ -32,12 +32,17 @@ export async function providerAdapter(request,env){
  const symbol=url.searchParams.get('symbol');const interval=url.searchParams.get('interval');
  if(!fx&&(status?!['NASDAQ','NYSE','NYSE American','NYSE Arca','AMEX','BATS','CBOE'].includes(exchange):search?!/^[a-zA-Z0-9 .-]{1,40}$/.test(symbol||''):!/^[A-Z][A-Z0-9.-]{0,14}$/.test(symbol||'')||!['5min','15min'].includes(interval)))return fail('INVALID_INPUT',400);
  if(!admit(identity))return fail('RATE_LIMITED',429);
+ return readProviderPayload(fx?'fx':status?'market_state':search?'symbol_search':'time_series',{symbol,interval,exchange},env);
+}
+
+async function readProviderPayload(kind,{symbol,interval,exchange},env,{background=false}={}){
+ const fx=kind==='fx',status=kind==='market_state',search=kind==='symbol_search';
  const upstream=new URL('https://api.twelvedata.com/'+(fx?'time_series':status?'market_state':search?'symbol_search':'time_series'));
  if(fx){for(const [key,value] of Object.entries({symbol:'USD/EUR',interval:'15min',timezone:'UTC',outputsize:'2',order:'asc'}))upstream.searchParams.set(key,value);}
  else if(status){upstream.searchParams.set('exchange',exchange);upstream.searchParams.set('country','United States');}else upstream.searchParams.set('symbol',symbol);
  if(!search&&!status&&!fx)for(const [key,value] of Object.entries({interval,timezone:'UTC',country:'United States',outputsize:'200',order:'asc'}))upstream.searchParams.set(key,value);
  upstream.searchParams.set('apikey',env.TWELVE_DATA_API_KEY);
- const quota=await consumeProviderQuota(env);if(!quota.allowed)return fail(quota.code,quota.status);
+ const quota=await consumeProviderQuota(env,{background});if(!quota.allowed)return fail(quota.code,quota.status);
  const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),7000);
  try{
   const response=await fetch(upstream,{signal:controller.signal,headers:{accept:'application/json'}});
@@ -58,4 +63,15 @@ export async function providerAdapter(request,env){
   return reply({meta:pick(data.meta,['symbol','interval','currency','exchange_timezone','exchange','mic_code','type','country','currency_base','currency_quote']),values:data.values.map(x=>pick(x,['datetime','open','high','low','close','volume']))});
  }catch{return fail(controller.signal.aborted?'PROVIDER_TIMEOUT':'INVALID_PROVIDER_DATA',controller.signal.aborted?504:502);}
  finally{clearTimeout(timer);}
+}
+
+/** Invoked only from the named service-binding entrypoint, never public fetch. */
+export async function backgroundProviderRead(input,env){
+ if(env.BACKGROUND_ALERTS_ENABLED!=='true')return fail('BACKGROUND_DISABLED',503);
+ if(!env.MARKET_QUOTA_DB||!env.TWELVE_DATA_API_KEY)return fail('SERVICE_NOT_CONFIGURED',503);
+ if(!input||typeof input!=='object'||Array.isArray(input))return fail('INVALID_INPUT',400);
+ const keys=Object.keys(input);
+ if(input.kind==='candles'&&keys.length===2&&keys.includes('symbol')&&typeof input.symbol==='string'&&/^[A-Z][A-Z0-9.-]{0,14}$/.test(input.symbol))return readProviderPayload('time_series',{symbol:input.symbol,interval:'5min'},env,{background:true});
+ if(input.kind==='status'&&keys.length===2&&keys.includes('exchange')&&['NASDAQ','NYSE','NYSE American','NYSE Arca','AMEX','BATS','CBOE'].includes(input.exchange))return readProviderPayload('market_state',{exchange:input.exchange},env,{background:true});
+ return fail('INVALID_INPUT',400);
 }

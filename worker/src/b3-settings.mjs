@@ -1,3 +1,4 @@
+import {entitlementMetadata} from '../../app/market-quality.mjs';
 /**
  * B3 identity/settings API. Identity must be verified by Cloudflare Access JWT
  * (RSA SHA-256, pinned audience + issuer, fresh JWK). No trust in client user IDs.
@@ -31,9 +32,15 @@ async function verifiedIdentity(request,env){
   return ok?issuer+'|'+payload.sub:null;
  }catch{return null}
 }
-export const defaultPreferences=Object.freeze({showUSD:true,defaultInterval:'15min',inAppAlerts:true,maxPositionPercent:'25.00',hideAmounts:false});
-function validPreferences(value){return value&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).length===5&&Object.keys(defaultPreferences).every(key=>Object.hasOwn(value,key))&&['showUSD','inAppAlerts','hideAmounts'].every(key=>typeof value[key]==='boolean')&&['5min','15min'].includes(value.defaultInterval)&&typeof value.maxPositionPercent==='string'&&/^(?:0|[1-9]\d?|100)\.\d{2}$/.test(value.maxPositionPercent)&&Number(value.maxPositionPercent)>0&&Number(value.maxPositionPercent)<=100;}
-function publicSettings(row){if(!row)throw Error('MISSING_SETTINGS');const preferences=row.preferences??(row.preferences_json?JSON.parse(row.preferences_json):{...defaultPreferences});if(!validPreferences(preferences))throw Error('CORRUPT_SETTINGS');return {display_name:row.display_name,locale:row.locale,timezone:row.timezone,display_currency:row.display_currency,risk_budget_eur:row.risk_budget_eur,version:row.version,preferences}}
+export const defaultPreferences=Object.freeze({showUSD:true,defaultInterval:'15min',inAppAlerts:true,maxPositionPercent:'25.00',hideAmounts:false,backgroundAlerts:false});
+function validPreferences(value){return value&&typeof value==='object'&&!Array.isArray(value)&&[5,6].includes(Object.keys(value).length)&&Object.keys(defaultPreferences).filter(key=>key!=='backgroundAlerts').every(key=>Object.hasOwn(value,key))&&Object.keys(value).every(key=>Object.hasOwn(defaultPreferences,key))&&['showUSD','inAppAlerts','hideAmounts'].every(key=>typeof value[key]==='boolean')&&(!Object.hasOwn(value,'backgroundAlerts')||typeof value.backgroundAlerts==='boolean')&&['5min','15min'].includes(value.defaultInterval)&&typeof value.maxPositionPercent==='string'&&/^(?:0|[1-9]\d?|100)\.\d{2}$/.test(value.maxPositionPercent)&&Number(value.maxPositionPercent)>0&&Number(value.maxPositionPercent)<=100;}
+export function backgroundAlertCapability(env,preferences,now=Date.now()){
+ const entitlement=entitlementMetadata(env.MARKET_ENTITLEMENT_JSON,now);
+ const code=env.BACKGROUND_ALERTS_ENABLED!=='true'?'BACKGROUND_DISABLED':!env.DB||!env.MARKET_QUOTA_DB||typeof env.BACKGROUND_MARKET?.read!=='function'?'SERVICE_NOT_CONFIGURED':entitlement.entitlementVerified!==true||entitlement.realtime!==true||entitlement.delay!==0||entitlement.displayRights!=='verified'?'ENTITLEMENT_UNVERIFIED':preferences.backgroundAlerts!==true?'OPTED_OUT':'READY';
+ return {active:code==='READY',code,delivery:'stored_in_app',cadenceMinutes:5};
+}
+
+function publicSettings(row,env){if(!row)throw Error('MISSING_SETTINGS');const preferences=row.preferences??(row.preferences_json?JSON.parse(row.preferences_json):{...defaultPreferences});if(!validPreferences(preferences))throw Error('CORRUPT_SETTINGS');return {display_name:row.display_name,locale:row.locale,timezone:row.timezone,display_currency:row.display_currency,risk_budget_eur:row.risk_budget_eur,version:row.version,preferences:{...defaultPreferences,...preferences},...(env?{backgroundAlertsStatus:backgroundAlertCapability(env,{...defaultPreferences,...preferences})}:{})}}
 async function settingsApi(request,env){
  const url=new URL(request.url);
  if(!url.pathname.startsWith('/api/v1/'))return null;
@@ -59,7 +66,7 @@ async function settingsApi(request,env){
  await env.DB.prepare('INSERT OR IGNORE INTO user_settings (user_id) VALUES (?)').bind(user.id).run();
  const read=()=>env.DB.prepare('SELECT display_name,locale,timezone,display_currency,risk_budget_eur,version,preferences_json FROM user_settings WHERE user_id=?').bind(user.id).first();
  if(request.method==='GET'){
-  const settings=publicSettings(await read());
+  const settings=publicSettings(await read(),env);
   return reply({data:url.pathname.endsWith('/session')?{authenticated:true,settings}:settings});
  }
  let data;
@@ -75,10 +82,10 @@ async function settingsApi(request,env){
  if('risk_budget_eur'in data&&(typeof data.risk_budget_eur!=='string'||! /^(?:0|[1-9]\d{0,7})\.\d{2}$/.test(data.risk_budget_eur)))return error('INVALID_RISK_BUDGET',400);
  if('preferences'in data&&!validPreferences(data.preferences))return error('INVALID_PREFERENCES',400);
  const current=await read();if(!current)return error('DATABASE_ERROR',503);
- const next={...publicSettings(current),...data};
+ const baseline=publicSettings(current);const next={...baseline,...data,preferences:{...baseline.preferences,...data.preferences}};
  const result=await env.DB.prepare('UPDATE user_settings SET display_name=?1,locale=?2,timezone=?3,display_currency=?4,risk_budget_eur=?5,preferences_json=?8,version=version+1,updated_at=datetime(\'now\') WHERE user_id=?6 AND version=?7').bind(next.display_name,next.locale,next.timezone,next.display_currency,next.risk_budget_eur,user.id,data.version,JSON.stringify(next.preferences)).run();
  if(!result.meta?.changes)return error('VERSION_CONFLICT',409);
- return reply({data:publicSettings({...next,version:data.version+1})});
+ return reply({data:publicSettings({...next,version:data.version+1},env)});
  }catch{return error('DATABASE_ERROR',503)}
 }
 export {settingsApi,verifiedIdentity};

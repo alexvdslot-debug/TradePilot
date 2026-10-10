@@ -9,7 +9,12 @@ workers_dev = true
 # CLIENT_ACCESS_TOKEN (legacy /api/candles only; never expose in browser)
 # Do not put secret values in this file.
 
+# Native scheduled invocation; global switch below keeps production inactive.
+[triggers]
+crons = ["*/5 * * * *"]
+
 [vars]
+BACKGROUND_ALERTS_ENABLED = "false"
 ALLOWED_ORIGIN = "https://tradepilot-pro-api.alexvdslot.workers.dev"
 ACCESS_TEAM_DOMAIN = "misty-surf-09c1.cloudflareaccess.com"
 ACCESS_AUD = "24efd2464d42ed45488e980ad0c72f8c3c726d30c97d70079d822d8cd449cdf3"
@@ -32,3 +37,9 @@ service = "tradepilot-market-data"
 binding = "MARKET_QUOTA_DB"
 database_name = "tradepilot-pro-staging"
 database_id = "052feeda-74df-4a2e-923f-0a2bf1d97d08"
+
+# Named private RPC entrypoint; never forwards an owner JWT.
+[[services]]
+binding = "BACKGROUND_MARKET"
+service = "tradepilot-market-data"
+entrypoint = "BackgroundMarket"

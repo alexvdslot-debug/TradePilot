@@ -34,3 +34,7 @@ Lessons:
 - A minute reset must preserve the daily count; a rejected minute or daily admission must increment neither counter.
 - Handle provider HTTP 429 before JSON parsing. Provider error bodies need not be JSON, and parsing first could conceal a quota failure.
 - A missing optional development binding and a configured production database failure require different behavior: bounded local compatibility versus a closed service error.
+
+## Background admission reservation
+
+Migration 0006 adds background counters to the same shared provider row. Background RPC admission is one atomic UPSERT and stops at four minute admissions, 300 background/day or 600 total/day, preserving interactive capacity within the original eight/800 limits. It requires D1 and never uses local fallback. Existing interactive calls reset obsolete background counters with normal UTC window rollover. See [background contract](BACKGROUND_ALERT_IMPLEMENTATION.md).

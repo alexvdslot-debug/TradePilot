@@ -57,3 +57,14 @@ test('preferences persist atomically and remain isolated, invalid keys fail clos
  for(const bad of [{...preferences,owner:'Q'},{...preferences,inAppAlerts:'true'},{...preferences,maxPositionPercent:'100.01'},{...preferences,defaultInterval:'1min'}])assert.equal((await settingsApi(req('/api/v1/settings','P','PATCH',{version:2,preferences:bad}),local)).status,400);
 });
 test('configured database errors return structured 503',async()=>{const response=await settingsApi(req('/api/v1/settings','P'),{...env,DB:{prepare(){throw Error('secret')}}});assert.equal(response.status,503);assert.equal((await response.json()).error.code,'DATABASE_ERROR')});
+
+test('background preference defaults off, legacy PATCH preserves explicit opt-in and capability stays disabled',async()=>{
+ const local={...env,DB:db()};let data=(await (await settingsApi(req('/api/v1/settings','BG'),local)).json()).data;
+ assert.equal(data.preferences.backgroundAlerts,false);assert.equal(data.backgroundAlertsStatus.code,'BACKGROUND_DISABLED');
+ data=(await (await settingsApi(req('/api/v1/settings','BG','PATCH',{version:1,preferences:{...data.preferences,backgroundAlerts:true}}),local)).json()).data;
+ assert.equal(data.preferences.backgroundAlerts,true);assert.equal(data.backgroundAlertsStatus.active,false);
+ const {backgroundAlerts,...legacy}=data.preferences;
+ data=(await (await settingsApi(req('/api/v1/settings','BG','PATCH',{version:2,preferences:legacy}),local)).json()).data;
+ assert.equal(data.preferences.backgroundAlerts,true);
+ assert.equal((await settingsApi(req('/api/v1/settings','BG','PATCH',{version:3,preferences:{...data.preferences,backgroundAlerts:'true'}}),local)).status,400);
+});

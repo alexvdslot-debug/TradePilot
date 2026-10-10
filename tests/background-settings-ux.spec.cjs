@@ -1,0 +1,17 @@
+const {test,expect}=require('@playwright/test');
+const fs=require('node:fs'),path=require('node:path');
+const base='http://127.0.0.1:8765';
+async function appFixture(page){
+ let settings={display_name:'Owner',locale:'nl-NL',timezone:'UTC',display_currency:'EUR',risk_budget_eur:'100.00',version:1,preferences:{showUSD:true,defaultInterval:'15min',inAppAlerts:true,maxPositionPercent:'25.00',hideAmounts:false}};
+ const errors=[];page.on('pageerror',error=>errors.push(error.message));
+ // Full source interception means this focused smoke needs no web server/build.
+ await page.route(base+'/app/**',route=>{let relative=new URL(route.request().url()).pathname.slice('/app/'.length);if(!relative||!path.extname(relative))relative='index.html';const file=path.join(__dirname,'../app',relative);const mime=relative.endsWith('.css')?'text/css':relative.endsWith('.svg')?'image/svg+xml':relative.endsWith('.html')?'text/html':'text/javascript';return route.fulfill({contentType:mime,body:fs.readFileSync(file)});});
+ await page.route(base+'/api/v1/**',route=>{const url=new URL(route.request().url());if(url.pathname.endsWith('/settings')){if(route.request().method()==='PATCH')settings={...settings,...route.request().postDataJSON(),version:settings.version+1,backgroundAlertsStatus:{active:false,code:'BACKGROUND_DISABLED',delivery:'stored_in_app',cadenceMinutes:5}};return route.fulfill({json:{data:settings}});}if(url.pathname.endsWith('/state'))return route.fulfill({json:{data:{version:1,events:[],watchlist:[],journal:[],alerts:[],preferences:{allowMargin:false,costMethod:'average'}}}});return route.fulfill({status:503,json:{error:{code:'UNAVAILABLE'}}});});
+ await page.goto(base+'/app/index.html');await expect(page.locator('.splash')).toHaveCount(0);await page.locator('#settings').click();return {get settings(){return settings},errors};
+}
+test('legacy account stays opted out and saving background preference clearly remains inactive in Dutch',async({page})=>{
+ await page.setViewportSize({width:375,height:812});const fixture=await appFixture(page);await expect(page.locator('#profile-background')).not.toBeChecked();await expect(page.locator('#background-alert-status')).toContainText('niet actief');await page.locator('#profile-background').check();await page.locator('#account-save').click();await expect(page.locator('#account-message')).toContainText('Opgeslagen');expect(fixture.settings.preferences.backgroundAlerts).toBe(true);await expect(page.locator('#background-alert-status')).toContainText('serverfunctie is uitgeschakeld');await page.locator('#account-reload').click();await expect(page.locator('#profile-background')).toBeChecked();await expect(page.locator('#background-alert-status')).toContainText('niet actief');expect(fixture.errors).toEqual([]);
+});
+test('English background preference describes stored next-visit notices and never claims active push',async({page})=>{
+ const fixture=await appFixture(page);await page.locator('#profile-locale').selectOption('en-US');await page.locator('#profile-background').check();await page.locator('#account-save').click();await expect(page.locator('#settings-alerts')).toContainText('Save my preference for background checks');await expect(page.locator('#settings-alerts')).toContainText('store notifications for your next visit');await expect(page.locator('#background-alert-status')).toHaveText('Background checking is inactive: the server feature is disabled.');expect(fixture.settings.preferences.backgroundAlerts).toBe(true);expect(fixture.errors).toEqual([]);
+});

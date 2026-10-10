@@ -1,3 +1,4 @@
+import {runBackgroundAlerts} from './background-alerts.mjs';
 import {privateStateApi} from './private-state.mjs';
 import {marketApi} from './market-api.mjs';
 import {settingsApi} from './b3-settings.mjs';
@@ -10,7 +11,7 @@ import {siteAssets,assetRevision} from './site-assets.mjs';
 const SYMBOL=/^[A-Z][A-Z0-9.]{0,9}$/;
 const INTERVALS=new Set(['5min','15min']);
 function response(body,status=200,headers={}){return new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff',...headers}})}
-export default {async fetch(request,env){
+export default {async scheduled(controller,env){const result=await runBackgroundAlerts(env);if(result.status==='error')throw Error(result.code);},async fetch(request,env){
   const apiPath=new URL(request.url).pathname;
   if(apiPath==='/app'||/^\/app\/(dashboard|portfolio|radar|analyzer|journal|settings|alerts)\/$/.test(apiPath)){const target=apiPath==='/app'?'/app/':apiPath.slice(0,-1);return Response.redirect(new URL(target,request.url),302);}
   if(apiPath==='/'&&request.method==='GET')return Response.redirect(new URL('/app/',request.url),302);
