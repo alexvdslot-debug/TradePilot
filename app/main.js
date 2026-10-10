@@ -54,6 +54,16 @@ async function loadAccount(){
   status.textContent=e.status===401?'Niet ingelogd: gebruik de beveiligde inloglink.':e.status===403?'Toegang geweigerd.':e.status===503?'Accountservice niet beschikbaar.':'Instellingen niet bereikbaar ('+e.message+'). Mogelijk blokkeert de browser cookies tussen domeinen.';
  }
 }
+async function hydrateDashboardProfile(){
+ try{
+  const data=await accountFetch('settings');
+  dashboardPreferences.name=data.display_name||null;
+  dashboardPreferences.timeZone=data.timezone;
+  refreshGreeting();
+ }catch{
+  // Keep a neutral greeting if the authenticated profile cannot be loaded.
+ }
+}
 function bindAccountSettings(){
  document.getElementById('account-reload').onclick=loadAccount;
  document.getElementById('account-settings').onsubmit=async event=>{
@@ -94,7 +104,7 @@ function startApp(){
  splash.innerHTML='<div class="splash-brand"><svg class="splash-mark" viewBox="0 0 64 64" role="img" aria-label="TradePilot Pro logo"><rect width="64" height="64" rx="16" fill="#09111E"/><rect class="splash-bar bar-1" x="13" y="34" width="9" height="18" rx="4.5" fill="#55C7ED"/><rect class="splash-bar bar-2" x="27" y="23" width="9" height="29" rx="4.5" fill="#398DEB"/><rect class="splash-bar bar-3" x="41" y="12" width="9" height="40" rx="4.5" fill="#3773E7"/></svg><h1>TradePilot <span>Pro</span></h1><p id="splash-status" class="sr-only">App voorbereiden…</p></div>';
  document.body.appendChild(splash);
  const slow=setTimeout(()=>{const status=document.getElementById('splash-status');if(status){status.className='splash-status';status.textContent='App voorbereiden…'}},2000);
- try{render();requestAnimationFrame(()=>{const done=()=>{clearTimeout(slow);splash.remove()};if(matchMedia('(prefers-reduced-motion: reduce)').matches)done();else splash.addEventListener('animationend',e=>{if(e.target.classList.contains('bar-3'))done()})})}
+ try{render();void hydrateDashboardProfile();requestAnimationFrame(()=>{const done=()=>{clearTimeout(slow);splash.remove()};if(matchMedia('(prefers-reduced-motion: reduce)').matches)done();else splash.addEventListener('animationend',e=>{if(e.target.classList.contains('bar-3'))done()})})}
  catch(e){clearTimeout(slow);const status=document.getElementById('splash-status');if(status){status.className='splash-status';status.textContent='Starten mislukt. Ververs de pagina om opnieuw te proberen.'}throw e}
 }
 startApp();
