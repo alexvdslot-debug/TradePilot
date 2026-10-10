@@ -200,3 +200,32 @@ test('mobile navigation renders SVG icons rather than raw symbol identifiers',as
  await expect(page.locator('.bottom .tab svg.ui-icon')).toHaveCount(5);
  await expect(page.locator('.bottom .tab').first()).not.toContainText('home');
 });
+
+test('B3 stale startup profile cannot overwrite a newer saved account',async({page})=>{
+ let firstRequest;
+ let count=0;
+ const saved={display_name:'Alexander',locale:'nl-NL',timezone:'Europe/Amsterdam',display_currency:'EUR',risk_budget_eur:'100.00',version:2};
+ await page.route('https://tradepilot-pro-api.alexvdslot.workers.dev/api/v1/**',async route=>{
+  const request=route.request();
+  if(request.url().endsWith('/session'))return route.fulfill({json:{data:{authenticated:true,settings:saved}}});
+  if(request.method()==='PATCH'){
+   Object.assign(saved,request.postDataJSON(),{version:saved.version+1});
+   return route.fulfill({json:{data:saved}});
+  }
+  count++;
+  if(count===1){firstRequest=route;return}
+  return route.fulfill({json:{data:saved}});
+ });
+ await page.goto('http://127.0.0.1:8765/app/index.html');
+ await expect(page.locator('.splash')).toBeHidden({timeout:5000});
+ await expect.poll(()=>count).toBeGreaterThan(0);
+ await page.getByRole('button',{name:'Instellingen'}).click();
+ await expect(page.locator('#account-status')).toContainText('Ingelogd');
+ await page.locator('#profile-name').fill('Alex nieuw');
+ await page.locator('#account-save').click();
+ await expect(page.locator('#account-message')).toContainText('versie 3');
+ await firstRequest.fulfill({json:{data:{...saved,display_name:'Oude naam',version:2}}});
+ await page.getByRole('button',{name:'Terug'}).click();
+ await expect(page.locator('#dashboard-greeting')).toContainText('Alex nieuw');
+ await expect(page.locator('#dashboard-greeting')).not.toContainText('Oude naam');
+});
