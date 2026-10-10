@@ -53,8 +53,8 @@ jobs:
         run: npx playwright install --with-deps chromium webkit
       - name: Run real browser UX checks
         run: npm run test:browser
-      - name: Upload browser test report on failure
-        if: failure()
+      - name: Upload mobile screenshots and browser test evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: tradepilot-browser-test-results
