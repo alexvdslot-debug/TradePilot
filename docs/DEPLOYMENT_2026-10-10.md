@@ -1,6 +1,6 @@
 # TradePilot Pro deployment — 10 October 2026
 
-## Live release
+## Earlier release — 07:54 UTC
 - Application: https://tradepilot-pro-api.alexvdslot.workers.dev/app/
 - Branch: tradepilot-pro-rebuild. Tested/deployed code commit: aba9363c4cef960a25fba0d496a618408da447cf.
 - App Worker version: 43c3af7e-9886-4b20-bb89-8cafb1097889, deployed 07:54:45 UTC.
@@ -31,3 +31,29 @@ See RELEASE_2026-10-10.md. Verified provider reuse does not verify the subscript
 
 ## Lesson
 Verify application authentication separately from Cloudflare account login. An internal authenticated provider adapter can reuse an existing secret while the management API cannot export it; test both public rejection and service binding success.
+
+## Completion release — 08:39 UTC
+- Application: https://tradepilot-pro-api.alexvdslot.workers.dev/app/
+- Tested/deployed final code: 3622bcbaae8761fc2e8df659f91e4cd31c5d3ec5. Main completion commit: eb85092706b91d40fa6fcb16107478fcfbca8a55.
+- Main Worker version: 8425f161-155b-4741-a23c-3a55556bcd5e; deployed 2026-10-10T08:39:46.01542Z.
+- Provider Worker version: e77f013b-5aa6-42e2-9ce3-8de54f4c8d6b; deployed 2026-10-10T08:15:47.159909Z.
+- Asset revision: 11c40c628598d566f3cbdc6de477e4e619fa8551d2f384b0f4b11bacb41dd0cf.
+- All16 downloaded production modules matched tested source bytes. Secret remains on the provider; main uses internal service binding. No key was read or copied.
+- Additive migration0004 applied; MARKET_QUOTA_DB bound to the same D1 in both Workers. Actual live provider quota row confirms accounting (five admissions at verification). Limits8/minute800/day enforced atomically; other uses of the key outside these Workers are outside this accounting.
+- Existing counts unchanged: users1/settings1/private_state1. No synthetic account transactions or plans added.
+- Node148/148 passed. Complete pre-final-UI Chromium/WebKit matrix76/76 passed. Final feature run34 passed, with only the new FX assertion locator corrected; corrected FX regression2/2 passed. Full final CI browser matrix follows below.
+- Source review PASS for session-safe CSV uploads and evidence-gated alerts. Build/check and diff checks passed.
+- Authenticated live session loaded stateversion1. OPEN5min/15min real historical candles remained correctly non-actionable; confirmed NASDAQ closed via provider_market_state at2026-10-10T08:16:30.110Z.
+- Live USD/EUR0.89274, completed timestamp2026-10-10T08:30:00Z, displayed as indicative with source/time. No verified realtime/delay or current trading signal inferred.
+- Cash-only FX refresh enabled; hypothetical entry ranges formatted, risk/reward displayed. UI reads do not persist portfolio changes.
+
+### Completion rollback
+Restore main43c3af7e-9886-4b20-bb89-8cafb1097889 and provider19dfb128-ef42-442c-9fa3-1da356db8fdd if required. Retain secret bindings, user_state and additive provider_quota table; never drop existing data. Intermediate main f4d6b351-feb2-4691-a357-d2357ee03f67 is also retained.
+
+### Remaining acceptance
+Core app features are built, tested and deployed. Production live ranking/alerts require verified account display entitlement plus fresh authoritative market evidence. Basic8/non-display plan evidence does not establish this. Stocktwits Worker credentials/rights are unavailable; actual broker-export validation and physical iPhone review remain open. Notifications run only while the app fetches data; no background/push service is claimed. Corporate actions/tax reporting/historical FX performance remain outside this release.
+
+- Final authenticated broader radar returned seven real equity rows (OPEN/AAPL/MSFT/NVDA/AMD/PLTR/TSLA) aligned to SPY and2026-10-09T19:45:00Z. All rows correctly say Wachten. No TradePilot console errors; no private state changes. Provider bundle also matched allfour uploaded modules and retained its secret binding.
+
+## Final CI acceptance
+Final deployed codecommit3622bcbaae8761fc2e8df659f91e4cd31c5d3ec5 passed allthree workflows: app shell/browser38038651638, quality gates38038651591, generalchecks38038651603. Browserjob114174320871 completed successfully; final matrix78cases (Chromium/WebKit). Node148tests passed. Earlier completioncommiteb850927 also passed allthree workflows. Documentation-only commits after this record do not change deployed code or assets.

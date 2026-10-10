@@ -31,4 +31,4 @@ Scope: B4–B8 domain/UI changes in portfolio, broker mapping, journal linkage/s
 
 - Alert evaluation now requires a verified source, an unexpired verified entitlement with display rights, and fresh authoritative matching-exchange/provider open-market status. The completed candle must fall in the regular exchange session; legacy flags alone cannot activate a notification.
 - 8/8 alert tests pass, including missing/expired entitlement, closed/stale/untrusted current market state, and explicitly verified current evidence for otherwise unverified normalized session metadata.
-- The two initial findings are fixed in source. Acceptance of the packaged browser revision remains pending its rebuilt assets and targeted regression run.
+- The two initial findings are fixed in source. Rebuilt packaged browser regression passed in Chromium and WebKit within the76-case matrix. Final cash-only FX regression passed in both engines; no source blocker remains from these scoped findings.
