@@ -36,7 +36,7 @@ async function settingsApi(request,env){
  if(!['/api/v1/session','/api/v1/settings'].includes(url.pathname))return error('NOT_FOUND',404);
  if(!env.DB||!env.ACCESS_TEAM_DOMAIN||!env.ACCESS_AUD)return error('SERVICE_NOT_CONFIGURED',503);
  const origin=request.headers.get('origin');
- const expected=env.ALLOWED_ORIGIN;
+ const expected=new URL(request.url).origin;
  if(origin&&origin!==expected)return error('FORBIDDEN_ORIGIN',403);
  if(request.method==='OPTIONS')return error('METHOD_NOT_ALLOWED',405);
  if(!['GET','PATCH'].includes(request.method)||(request.method==='PATCH'&&url.pathname!=='/api/v1/settings'))return error('METHOD_NOT_ALLOWED',405);
