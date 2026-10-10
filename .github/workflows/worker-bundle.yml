@@ -5,6 +5,8 @@ on:
     branches: [tradepilot-pro-rebuild]
     paths:
       - 'app/**'
+      - 'tests/**'
+      - 'pro/**'
       - 'worker/**'
       - 'scripts/build-assets.mjs'
       - 'package*.json'
