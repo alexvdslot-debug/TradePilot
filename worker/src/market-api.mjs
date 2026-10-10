@@ -31,13 +31,23 @@ function admit(key, limit, now) {
  if (admissions.size > 512) admissions.delete(admissions.keys().next().value);
  return true;
 }
-async function provider(path, params, env) {
- const url = new URL('https://api.twelvedata.com/'+path);
- for (const [key,value] of Object.entries(params)) url.searchParams.set(key,value);
- url.searchParams.set('apikey',env.TWELVE_DATA_API_KEY);
+async function provider(path, params, env, request) {
+ const binding=env.MARKET_PROVIDER&&typeof env.MARKET_PROVIDER.fetch==='function';
+ const url = new URL(binding?'https://provider.internal/_tradepilot/'+path:'https://api.twelvedata.com/'+path);
+ for (const [key,value] of Object.entries(params)) if(!binding||['symbol','interval'].includes(key))url.searchParams.set(key,value);
+ if(!binding)url.searchParams.set('apikey',env.TWELVE_DATA_API_KEY);
+ const headers=new Headers({accept:'application/json'});
+ if(binding){
+  const assertion=request.headers.get('Cf-Access-Jwt-Assertion');
+  const cookie=(request.headers.get('cookie')||'').match(/(?:^|;\s*)CF_Authorization=([^;]+)/)?.[1];
+  if(assertion)headers.set('Cf-Access-Jwt-Assertion',assertion);
+  else if(cookie)headers.set('cookie','CF_Authorization='+cookie);
+ }
  const controller=new AbortController(); const timer=setTimeout(()=>controller.abort(),7000);
  try {
-  const res=await fetch(url,{signal:controller.signal,headers:{accept:'application/json'}});
+  const downstream=new Request(url,{signal:controller.signal,headers});
+  const res=binding?await env.MARKET_PROVIDER.fetch(downstream):await fetch(downstream);
+  if(binding&&res.status===503)return {error:'MARKET_NOT_CONFIGURED',status:503};
   if(res.status===429) return {error:'PROVIDER_QUOTA',status:429};
   if(!res.ok) return {error:'PROVIDER_UNAVAILABLE',status:502};
   const raw=await res.text(); if(raw.length>250000) return {error:'INVALID_PROVIDER_DATA',status:502};
@@ -54,7 +64,7 @@ export async function marketApi(request,env) {
  if(request.method!=='GET')return fail('METHOD_NOT_ALLOWED',405);
  if(request.headers.get('origin')&&request.headers.get('origin')!==url.origin)return fail('FORBIDDEN_ORIGIN',403);
  const identity=await verifiedIdentity(request,env); if(!identity)return fail('UNAUTHENTICATED',401);
- if(!env.TWELVE_DATA_API_KEY)return fail('MARKET_NOT_CONFIGURED',503);
+ if(!env.TWELVE_DATA_API_KEY&&typeof env.MARKET_PROVIDER?.fetch!=='function')return fail('MARKET_NOT_CONFIGURED',503);
  const search=url.pathname==='/api/v1/market/search';
  if(!search&&url.pathname!=='/api/v1/market/candles')return fail('NOT_FOUND',404);
  const symbol=(url.searchParams.get('symbol')||'').toUpperCase();
@@ -73,7 +83,7 @@ export async function marketApi(request,env) {
  // Isolate-local protection only; deploy a distributed quota binding before scaling.
  if(!admit('provider',8,now))return fail('RATE_LIMITED',429,true);
  const job=(async()=>{
-  const result=await provider(search?'symbol_search':'time_series',search?{symbol:q}:{symbol,interval,timezone:'UTC',country:'United States',outputsize:'200',order:'asc'},env);
+  const result=await provider(search?'symbol_search':'time_series',search?{symbol:q}:{symbol,interval,timezone:'UTC',country:'United States',outputsize:'200',order:'asc'},env,request);
   if(result.error)return {body:{error:{code:result.error,message:result.error,retryable:true}},status:result.status};
   let data;
   try {

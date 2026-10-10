@@ -22,3 +22,17 @@ Lessons recorded during implementation:
 3. A fresh timestamp does not prove realtime entitlement or regular-session status. Preserve uncertainty and withhold actionable ranking.
 4. Candle timestamps denote bar opening; wait until interval close before actionable analysis.
 5. Global rules referenced at ~/.Codex/rules/security.md and testing.md were absent in this environment; actual Access verification and fail-closed boundaries were reviewed from the existing source.
+
+## Provider service binding (secret reuse)
+
+The app Worker may configure `MARKET_PROVIDER` as a Cloudflare service binding to the existing legacy market Worker. The existing provider secret stays only on that legacy Worker. Both Workers must pin the same Cloudflare Access issuer/audience. Main market requests forward the verified Access assertion, or only the CF_Authorization cookie as fallback; unrelated cookies, browser Authorization and provider keys are not forwarded. Main Worker prefers the binding when configured and otherwise supports its local provider secret.
+
+Legacy Worker intercepts only `/_tradepilot/symbol_search` and `/_tradepilot/time_series` before its existing quote handler. It independently verifies the forwarded JWT; unauthenticated requests spend no provider quota. GET and exact nonduplicated parameters are required. Search accepts symbol; candles accept symbol/5min-or-15min interval. UTC, US, ascending order and 200-bar size are fixed server-side. Upstream is a fixed host with a seven-second abort deadline; response bytes are counted during streaming with a 250,000-byte ceiling. Error text and extra diagnostic fields are never relayed. Provider errors use fixed codes; 429 retains Retry-After. Existing quote behavior is retained with the production no-store/no-cf-cache baseline and sanitized errors.
+
+Additional tests: `node --test worker/provider-adapter.test.mjs worker/market-api.test.mjs` — 13 passed, 0 failed. Covers unauthenticated no-upstream calls, exact parameter whitelist, forwarding without secrets, real main→legacy adapter→mock-provider normalization, cookie filtering, quota/error/oversized-response sanitization and existing legacy quote behavior. This local integration smoke test proves the request path, not production binding configuration.
+
+Lessons:
+- A service binding is transport, not authorization: independently revalidate the signed end-user assertion at the destination.
+- Reusing an existing Worker secret avoids reading/exporting or duplicating credential material.
+- Preserve observed production caching behavior when the repository proxy differs from deployed code.
+- A post-allocation text-length check does not bound memory consumption; count upstream bytes while streaming.

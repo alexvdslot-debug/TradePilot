@@ -5,7 +5,7 @@ workers_dev = true
 
 # Set ALLOWED_ORIGIN to the exact production app origin.
 # Configure secrets using wrangler secret put:
-# TWELVE_DATA_API_KEY
+# TWELVE_DATA_API_KEY (optional direct-provider fallback)
 # CLIENT_ACCESS_TOKEN (legacy /api/candles only; never expose in browser)
 # Do not put secret values in this file.
 
@@ -21,3 +21,8 @@ ACCESS_AUD = "24efd2464d42ed45488e980ad0c72f8c3c726d30c97d70079d822d8cd449cdf3"
 binding = "DB"
 database_name = "tradepilot-pro-staging"
 database_id = "052feeda-74df-4a2e-923f-0a2bf1d97d08"
+
+# Reuse the existing provider secret internally; no key is copied into this Worker.
+[[services]]
+binding = "MARKET_PROVIDER"
+service = "tradepilot-market-data"

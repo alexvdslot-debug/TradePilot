@@ -19,6 +19,12 @@
 - Settings reload now exits during an active write; the reload button is disabled throughout PATCH and restored in `finally`. This removes the reviewed concurrent reload/save path.
 - All blockers reported in this scoped review have been addressed. Browser verification remains owned by the parent agent; this review uses read-only source inspection and local deterministic fixtures, with no production identity or external mutations.
 
+## MARKET_PROVIDER bridge review
+
+- A service binding is an internal transport, not an identity boundary. The bridge verifies the signed Access identity again and forwards only the assertion or the single authorization cookie; unrelated browser cookies and the provider secret remain outside the forwarded request.
+- Keep routes and query keys explicit, reject duplicate parameters, and pin output size, country, timezone, and sort order inside the adapter. Stream and bound provider bodies before parsing; strip unrecognized response fields and use fixed public error codes.
+- Scoped review passed: 13/13 market API and adapter tests, including unauthorized calls, duplicate/unknown parameters, assertion/cookie forwarding, quota/error/oversized responses, and preservation of the existing legacy quote route. No new bridge blockers identified. Tests used locally signed fixtures only.
+
 ## Fixes and test-environment discovery
 - Fixed module MIME and redirected entry/trailing-slash routes; regression test covers the whole import graph and direct routes.
 - Added auth-generation checks to every account request and state-save epoch checks; successful pre-logout responses are discarded. Private screens and open overlays are sanitized immediately.
@@ -27,3 +33,5 @@
 - Safari/WebKit does not consistently focus buttons on pointer click. Overlay focus restoration now explicitly remembers the invoking button instead of assuming `document.activeElement` is the invoker.
 - Disable account reload during a settings write and reject obsolete save responses. Margin error cleanup must tolerate cleared account state and detached elements.
 - Playwright's WebKit screenshot preparation inserts a temporary `body {}` inline stylesheet (`playwright-core/lib/server/screenshotter.js`), which strict CSP rightly blocks. Verify application console/CSP before screenshot preparation; generate the preview in Chromium without weakening the production CSP. WebKit keeps the same functional/CSP checks without that screenshot step.
+
+- Cloudflare dashboard login is separate from the protected TradePilot Access application session; verify the actual app route rather than treating dashboard login as application access. Existing Worker secrets can be reused with an authenticated service binding without reading or copying their values.
