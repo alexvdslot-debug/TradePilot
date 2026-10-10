@@ -173,3 +173,9 @@ input,select,textarea{accent-color:#0878ad}
  .bottom{padding-left:3px;padding-right:3px}
  .bottom .tab{font-size:9px;padding-left:0;padding-right:0}
 }
+
+/* Keep financial figures readable on very narrow devices; later mobile rules must not override this. */
+@media(max-width:340px){
+ .dashboard-kpis{grid-template-columns:minmax(0,1fr)}
+ .dashboard-kpis .card{min-height:0}
+}
