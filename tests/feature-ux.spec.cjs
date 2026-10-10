@@ -92,3 +92,24 @@ test('scan cache older than sixty seconds cannot bypass a provider fetch',async(
 test('scan cache with an invalid retrieval timestamp is never reused',async({page})=>{
  const requests=await quotaScan(page,{retrievedAt:'2026-02-30T12:00:00Z'});await page.locator('#scan-table [data-select-candidate=NVDA]').click();await page.locator('#scan-details [data-open-analyzer=NVDA]').click();await expect(page.locator('#market-result')).toContainText('Aanvraaglimiet van de databron bereikt');expect(requests).toHaveLength(9);await expect(page.locator('.price-chart')).toHaveCount(0);
 });
+
+ test('add shares opens purchase fields and explains missing cash before allowing a real booking',async({page})=>{
+ const store=await setup(page);await ready(page,'portfolio');
+ await page.getByRole('button',{name:'Aandelen toevoegen',exact:true}).click();
+ await expect(page.locator('#ledger-form [name=type]')).toHaveValue('BUY');
+ await expect(page.locator('#ledger-form [name=symbol]')).toBeFocused();
+ await expect(page.locator('#ledger-live-preview')).toContainText('Vul ticker, aantal en aankoopprijs');
+ for(const [name,value]of Object.entries({symbol:'OPEN',quantity:'10',price:'3'}))await page.locator('#ledger-form [name='+name+']').fill(value);
+ await expect(page.locator('#ledger-live-preview')).toContainText('Registreer eerst je werkelijke storting');
+ await expect(page.locator('#ledger-form button.primary')).toBeDisabled();expect(store.get().events).toHaveLength(0);
+ await page.locator('#ledger-form [name=type]').selectOption('DEPOSIT');
+ await page.locator('#ledger-form [name=timestamp]').fill('2026-10-01T10:00:00Z');
+ await page.locator('#ledger-form [name=amount]').fill('100');
+ await expect(page.locator('#ledger-form button.primary')).toBeEnabled();await page.locator('#ledger-form button.primary').click();
+ await expect(page.locator('#feature-message')).toContainText('Boeking opgeslagen');
+ await page.getByRole('button',{name:'Aandelen toevoegen',exact:true}).click();
+ for(const [name,value]of Object.entries({symbol:'OPEN',quantity:'10',price:'3'}))await page.locator('#ledger-form [name='+name+']').fill(value);
+ await expect(page.locator('#ledger-form button.primary')).toBeEnabled();await page.locator('#ledger-form button.primary').click();
+ await expect(page.locator('[data-position-row=OPEN]')).toContainText('10');
+ expect(store.get().events.map(e=>e.type)).toEqual(['DEPOSIT','BUY']);
+ });
