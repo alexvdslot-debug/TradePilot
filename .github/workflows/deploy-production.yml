@@ -29,8 +29,9 @@ jobs:
       - name: Install and verify application
         run: |
           npm ci
-          npm test
+          npm run build
           npm run check
+          npm test
       - name: Install Cloudflare Wrangler
         run: npm install --no-save wrangler@4
       - name: Validate complete Worker bundle offline
