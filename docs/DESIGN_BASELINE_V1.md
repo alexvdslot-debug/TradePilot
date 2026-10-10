@@ -41,3 +41,6 @@ Start met app-shell, splash, vijf werkende routes, consistente header en dashboa
 - `docs/screens/01-dashboard.md` t/m `07-global-search-notifications.md`
 - `docs/components/00-app-splashscreen.md`
 - `docs/DATA_INTEGRATION_MATRIX.md`
+
+## Richting bevestigd — 10 oktober 2026
+De gebruiker heeft de ontbrekende mockup als blokkerende referentie losgelaten: “maakt niet uit, de ux moet strak, helder van kleur.. en duidelijke icons en graphics hebben.” Voor de huidige afronding gelden de vastgelegde lichte richting, heldere hiërarchie, herkenbare SVG-iconen en echte financiële grafieken. Exacte gelijkenis met de verdwenen collage is geen acceptatievoorwaarde meer. De overige functionele en data-integriteitsafspraken blijven gelden.
