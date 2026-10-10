@@ -2,6 +2,11 @@ name: TradePilot Pro controlled deployment
 
 on:
   workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Type DEPLOY to confirm production publication'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -12,6 +17,7 @@ concurrency:
 
 jobs:
   verify-and-deploy:
+    if: github.ref == 'refs/heads/tradepilot-pro-rebuild' && inputs.confirmation == 'DEPLOY'
     runs-on: ubuntu-latest
     environment: production
     steps:
