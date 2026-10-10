@@ -15,6 +15,8 @@ test('portfolio renders and feed reports provenance',async({page})=>{
 });
 test('scenario handles fees and rejects invalid stop',async({page})=>{
  await page.goto(pageUrl);
+ await page.locator('#tab-risk').click();
+ await expect(page.locator('#panel-risk')).toBeVisible();
  await page.locator('#entry').fill('10');
  await page.locator('#stop').fill('9');
  await page.locator('#target1').fill('12');
@@ -37,9 +39,11 @@ test('unavailable market data is clearly flagged',async({page})=>{
 test('mobile viewport has usable controls',async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.goto(pageUrl);
- await expect(page.locator('#calculate')).toBeVisible();
- await expect(page.locator('#refresh')).toBeVisible();
  await expect(page.locator('#portfolio')).toContainText('OPEN');
+ await page.locator('.bottom-nav [data-tab="risk"]').click();
+ await expect(page.locator('#calculate')).toBeVisible();
+ await page.locator('.bottom-nav [data-tab="radar"]').click();
+ await expect(page.locator('#refresh')).toBeVisible();
 });
 
 test('stale quote cannot be labelled recent',async({page})=>{
