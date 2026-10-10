@@ -8,6 +8,7 @@ test('mobile navigation renders actual inline icons without horizontal overflow'
   await expect(page.locator('.splash')).toBeHidden({timeout:5000});
   const bottom=page.locator('.bottom');
   await expect(bottom).toBeVisible();
+  await page.screenshot({path:test.info().outputPath('tradepilot-mobile-'+width+'.png'),fullPage:true});
   await expect(bottom.locator('a.tab')).toHaveCount(5);
   for(const tab of await bottom.locator('a.tab').all()){
    const icon=tab.locator('svg.ui-icon');
