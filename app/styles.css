@@ -149,3 +149,27 @@ input,select,textarea{accent-color:#0878ad}
 @media(prefers-reduced-motion:reduce){
  .icon-button{transition:none}
 }
+
+/* Mobile premium refinement: consistent rhythm and readable navigation. */
+@media(max-width:720px){
+ .shell{max-width:100%;overflow-x:clip}
+ .header{min-width:0}
+ .brand{min-width:0;flex-wrap:nowrap;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .header-actions{flex-shrink:0}
+ .content{min-width:0}
+ .dashboard-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .dashboard-kpis .card{min-width:0}
+ .bottom{grid-template-columns:repeat(5,minmax(0,1fr));gap:2px}
+ .bottom .tab{min-width:0;overflow-wrap:normal;word-break:normal;hyphens:none;white-space:nowrap;letter-spacing:-.015em}
+ .bottom .tab .ui-icon{flex-shrink:0;stroke-width:1.8}
+ .bottom .tab:focus-visible{outline-offset:-3px}
+ .table-scroll{overscroll-behavior-x:contain}
+}
+@media(max-width:380px){
+ .header{padding:9px 8px}
+ .brand{font-size:14px;gap:4px}
+ .brand-mark{width:28px;height:28px;flex-shrink:0}
+ .header .icon-button{width:40px;min-width:40px;height:42px}
+ .bottom{padding-left:3px;padding-right:3px}
+ .bottom .tab{font-size:9px;padding-left:0;padding-right:0}
+}
