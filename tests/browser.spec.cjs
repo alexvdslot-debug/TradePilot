@@ -42,7 +42,7 @@ test('mobile viewport has usable controls',async({page})=>{
  await expect(page.locator('#portfolio')).toContainText('OPEN');
  await page.locator('.bottom-nav [data-tab="risk"]').click();
  await expect(page.locator('#calculate')).toBeVisible();
- await page.locator('.bottom-nav [data-tab="radar"]').click();
+ await page.locator('.bottom-nav [data-tab="home"]').click();
  await expect(page.locator('#refresh')).toBeVisible();
 });
 
