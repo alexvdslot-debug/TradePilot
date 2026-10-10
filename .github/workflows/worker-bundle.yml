@@ -1,0 +1,33 @@
+name: TradePilot Worker bundle validation
+
+on:
+  push:
+    branches: [tradepilot-pro-rebuild]
+    paths:
+      - 'app/**'
+      - 'worker/**'
+      - 'scripts/build-assets.mjs'
+      - 'package*.json'
+      - '.github/workflows/worker-bundle.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Confirm frontend and embedded Worker assets match
+        run: npm run check
+      - name: Install Wrangler for offline bundling
+        run: npm install --no-save wrangler@4
+      - name: Bundle all imported Worker modules without deploying
+        working-directory: worker
+        run: npx wrangler deploy --config wrangler.toml --dry-run --outdir ../.wrangler-dry-run
