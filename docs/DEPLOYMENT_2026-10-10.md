@@ -69,3 +69,6 @@ Core interaction repair described in UX_ACCEPTANCE_2026-10-10.md, without changi
 - Authenticated production verified genuine OPEN5/15 candles, automatic interval refresh, readable mobile contained scrolling, Portfolio hierarchy, search→Analyzer Enter, notifications and zero console errors. State remainedversion1; no production financial state was changed.
 - Rollback UX only: restore main8425f161-155b-4741-a23c-3a55556bcd5e, retaining current bindings and user records. Provider e77f013b-5aa6-42e2-9ce3-8de54f4c8d6b unchanged.
 - This scope does not claim every advanced older screen detail. See UX acceptance limits for chart crosshair/zoom, historical performance graphics and richer comparison work.
+
+### UX CI portability verification
+Source4a78 passed quality38039782824 and general38039782814. Browser38039782812 passed113 interactions but failed three screenshot saves because `/private/tmp` is macOS-specific. Corrected tests use Playwright `testInfo.outputPath`. Fix commitfb864e70f1c277dc59c36eb85eb4fc28047fa46a passed allthree workflows: app38040118377, quality38040118531, general38040118360. Local portable screenshot regression6/6 passed. This correction does not change deployed UI assets.

@@ -98,3 +98,33 @@ keyboard-scroll table label change.
 6. Development browser tests need a localhost server. The sandbox blocked binding
    port 8765 (`listen EPERM`); the authorized escalated Playwright run exercised the
    same real Worker/CSP test server rather than bypassing production headers.
+
+## Live scan-to-Analyzer quota correction
+
+Production discovery found that an eight-request scan immediately followed by a
+ticker drill-down attempted an extra five-minute request, exhausting the provider
+budget instead of opening the available chart. Market forms now default to the
+specified 15-minute interval. `openTicker` reuses a matching in-memory feed only
+when its exact UTC `retrievedAt` is valid, not future, and no more than 60 seconds
+old. Invalid or expired retrieval evidence fetches again. Explicit interval change
+and manual analysis/retry continue to request the selected interval.
+
+Reuse re-runs `completedFeed` and `analyzeCandles` against the current clock; it
+does not change entitlement/session flags, promote stale candles, or call a cached
+historical price current. Account reset still clears the entire feed map. Cache
+reuse is only navigation convenience within one authenticated feature session.
+
+`PROVIDER_QUOTA`/429 now shows a Dutch explanation, technical code in details and
+an owner-triggered retry button. It explains that a minute or daily limit may be
+involved and promises no guessed reset time. Retry performs one request; there is
+no automatic retry loop or bypass of the provider limit.
+
+New regressions cover eight scan requests followed by successful NVDA 15-minute
+drill-down without a ninth call; explicit five-minute change requiring a new call;
+friendly quota/retry; cache expiration; and invalid retrieval timestamps. Final
+focused results follow the synchronized parent asset build and browser run.
+
+Lesson: network-cost acceptance must cover consecutive user actions across routes.
+A passing scan and a passing Analyzer in isolation do not prove their combined
+workflow respects a shared upstream quota. Retrieval recency and market-observation
+freshness are separate; both must retain their own checks and labels.

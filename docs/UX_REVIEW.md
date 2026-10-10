@@ -45,3 +45,10 @@ Read-only review against `DESIGN_BASELINE_V1.md`, `INTERACTION_REGISTER.md`, and
 - Focus trapping now excludes disabled, hidden/inert and zero-layout controls, and cycles from the actual active element through visible targets. The hidden retry control no longer breaks wrapping.
 - Alert edits now preserve `alert.enabled`, and the direction helper preserves the existing selected condition. Pause/resume remains an explicit action.
 - Scoped source re-review has no remaining high-confidence blockers. 29/29 focused alerts, journal, market-quality and analysis tests pass. Parent/owners retain browser regressions for form preservation, paused threshold editing, typed navigation and keyboard interaction; this source verdict does not substitute for their browser results.
+
+## Radar-to-Analyzer quota/cache review
+
+- Drill-down reuses only the requested symbol and interval with a canonical, valid UTC retrieval timestamp between now minus 60 seconds and now. Expired, future, missing or malformed timestamps cannot authorize reuse. Explicit interval changes and the retry control continue through the provider fetch path.
+- Cached rendering reruns completed-candle filtering and analysis against the current clock; retrieval freshness does not imply candle freshness, market-open status, entitlement or display rights. Reset still clears feeds and increments the market generation, blocking prior-owner request completions.
+- Actual cache-helper fixture passed eight eligibility cases plus completion/staleness recomputation. Market-quality/analysis suite passed 15/15. No high-confidence new blockers identified; owner runs the scan-to-drill-down browser quota regression.
+- Lesson: transport-cache TTL and market-data validity are different clocks. Reusing recently downloaded historical bars is appropriate only when the interface retains historical/unknown quality labels and reevaluates trading gates at display time.

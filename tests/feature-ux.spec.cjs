@@ -69,3 +69,26 @@ test('interval selection refreshes chosen ticker and stays idle without a ticker
  await setup(page);const requested=[];page.on('request',request=>{if(request.url().includes('/market/candles'))requested.push(new URL(request.url()).searchParams.get('interval'));});await ready(page,'analyzer');
  await page.locator('#market-form [name=interval]').selectOption('15min');expect(requested).toEqual([]);await page.locator('#market-form [name=symbol]').fill('OPEN');await page.locator('#market-form button').click();await expect(page.locator('.price-chart')).toBeVisible();expect(requested).toEqual(['15min']);await page.locator('#market-form [name=interval]').selectOption('5min');await expect.poll(()=>requested).toEqual(['15min','5min']);await expect(page.locator('#market-result .badge')).toHaveText('5min');
 });
+
+async function quotaScan(page,{retrievedAt='2026-10-10T12:00:00Z'}={}){
+ await page.clock.setFixedTime(new Date('2026-10-10T12:00:00Z'));await setup(page);const requests=[];
+ await page.route('**/api/v1/market/candles?**',route=>{
+  const url=new URL(route.request().url()),symbol=url.searchParams.get('symbol'),interval=url.searchParams.get('interval');requests.push({symbol,interval});
+  if(requests.length>8)return route.fulfill({status:429,json:{error:{code:'PROVIDER_QUOTA'}}});
+  return route.fulfill({json:{data:{...feed(symbol,interval),retrievedAt}}});
+ });
+ await ready(page,'radar');await page.locator('#scan-discover').click();await expect(page.locator('#scan-table tbody tr')).toHaveCount(7);expect(requests).toHaveLength(8);return requests;
+}
+
+test('full eight-call scan opens matching 15-minute Analyzer without a ninth provider request',async({page})=>{
+ const requests=await quotaScan(page);await page.locator('#scan-table [data-open-analyzer=NVDA]').click();await expect(page.locator('#market-form [name=interval]')).toHaveValue('15min');await expect(page.locator('.price-chart')).toBeVisible();await expect(page.locator('#market-result .badge')).toHaveText('15min');await expect(page.locator('#market-result')).toContainText('Wachten');expect(requests).toHaveLength(8);
+ await page.locator('#market-form [name=interval]').selectOption('5min');await expect(page.locator('#market-result')).toContainText('Aanvraaglimiet van de databron bereikt');expect(requests).toHaveLength(9);expect(requests[8]).toEqual({symbol:'NVDA',interval:'5min'});await expect(page.locator('#market-retry')).toBeVisible();await expect(page.locator('#market-result')).toContainText('minutenlimiet of daglimiet');await page.locator('#market-retry').click();await expect.poll(()=>requests.length).toBe(10);
+});
+
+test('scan cache older than sixty seconds cannot bypass a provider fetch',async({page})=>{
+ const requests=await quotaScan(page);await page.clock.setFixedTime(new Date('2026-10-10T12:01:01Z'));await page.locator('#scan-table [data-open-analyzer=NVDA]').click();await expect(page.locator('#market-result')).toContainText('Aanvraaglimiet van de databron bereikt');expect(requests).toHaveLength(9);await expect(page.locator('.price-chart')).toHaveCount(0);
+});
+
+test('scan cache with an invalid retrieval timestamp is never reused',async({page})=>{
+ const requests=await quotaScan(page,{retrievedAt:'2026-02-30T12:00:00Z'});await page.locator('#scan-table [data-open-analyzer=NVDA]').click();await expect(page.locator('#market-result')).toContainText('Aanvraaglimiet van de databron bereikt');expect(requests).toHaveLength(9);await expect(page.locator('.price-chart')).toHaveCount(0);
+});
