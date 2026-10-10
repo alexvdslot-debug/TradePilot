@@ -28,6 +28,8 @@ jobs:
         run: npm run build
       - name: Confirm generated frontend and syntax
         run: npm run check
+      - name: Run application and mobile navigation regression tests
+        run: npm test
       - name: Install Wrangler for offline bundling
         run: npm install --no-save wrangler@4
       - name: Bundle all imported Worker modules without deploying
