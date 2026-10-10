@@ -37,3 +37,26 @@ jobs:
       - name: Bundle all imported Worker modules without deploying
         working-directory: worker
         run: npx wrangler deploy --config wrangler.toml --dry-run --outdir ../.wrangler-dry-run
+
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Install Chromium and WebKit browser dependencies
+        run: npx playwright install --with-deps chromium webkit
+      - name: Run real browser UX checks
+        run: npm run test:browser
+      - name: Upload browser test report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tradepilot-browser-test-results
+          path: test-results/
+          if-no-files-found: ignore
