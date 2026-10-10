@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {execFile,spawnSync} from 'node:child_process';
 import {webcrypto} from 'node:crypto';
-import {runBackgroundAlerts,SAVE_ALERT_OWNER_SQL} from './src/background-alerts.mjs';
+import {runBackgroundAlerts,SAVE_ALERT_OWNER_SQL,inBackgroundCheckWindow} from './src/background-alerts.mjs';
 import {backgroundProviderRead,providerAdapter} from './src/provider-adapter.mjs';
 import {backgroundAlertCapability} from './src/b3-settings.mjs';
 if(!globalThis.crypto)globalThis.crypto=webcrypto;
@@ -91,4 +91,19 @@ test('one owner poison symbol cannot starve a later owner, and repeated runs rem
  env.BACKGROUND_MARKET.read=async input=>{requests++;if(input.symbol==='BAD')return Response.json({error:{code:'PROVIDER_UNAVAILABLE'}},{status:502});return Response.json(input.kind==='candles'?raw(input.symbol):[{name:input.exchange,country:'United States',is_market_open:true}]);};
  const first=await runBackgroundAlerts(env,{now});assert.equal(first.status,'ok');assert.equal(first.code,'CHECKED_WITH_SKIPS');assert.equal(first.triggered,1);assert.equal(first.failedSymbols,1);assert.equal(requests,3);assert.equal((await db.read('A')).version,1);assert.equal((await db.read('B')).version,2);
  const second=await runBackgroundAlerts(env,{now:now+1000});assert.equal(second.triggered,0);assert.equal(second.failedSymbols,1);assert.equal(requests,4);
+});
+
+test('weekends and NY overnight/premarket/afterhours skip before any database or RPC work',async()=>{
+ let calls=0;const env={BACKGROUND_ALERTS_ENABLED:'true',get DB(){calls++;throw Error('unexpected DB access')},get MARKET_QUOTA_DB(){calls++;throw Error('unexpected quota access')},get BACKGROUND_MARKET(){calls++;throw Error('unexpected RPC access')}};
+ for(const timestamp of ['2026-10-03T14:35:00Z','2026-10-04T14:35:00Z','2026-10-01T04:00:00Z','2026-10-01T13:30:00Z','2026-10-01T13:34:59Z','2026-10-01T20:00:00Z','2026-10-01T22:00:00Z']){
+  const result=await runBackgroundAlerts(env,{now:Date.parse(timestamp)});assert.equal(result.code,'OUTSIDE_REGULAR_CHECK_WINDOW',timestamp);assert.equal(result.triggered,0);
+ }
+ assert.equal(calls,0);
+});
+test('NY window follows both DST transitions and does not assert holiday opening',async()=>{
+ for(const timestamp of ['2026-03-06T14:35:00Z','2026-03-09T13:35:00Z','2026-10-30T13:35:00Z','2026-11-02T14:35:00Z','2026-12-25T14:35:00Z'])assert.equal(inBackgroundCheckWindow(Date.parse(timestamp)),true,timestamp);
+ for(const timestamp of ['2026-03-06T14:34:59Z','2026-03-09T13:34:59Z','2026-11-02T13:35:00Z','2026-03-09T20:00:00Z','2026-11-02T21:00:00Z'])assert.equal(inBackgroundCheckWindow(Date.parse(timestamp)),false,timestamp);
+ let calls=0;const env={BACKGROUND_ALERTS_ENABLED:'true',DB:{prepare(){calls++;throw Error('unexpected DB work')}},MARKET_QUOTA_DB:{},BACKGROUND_MARKET:{read(){calls++;throw Error('unexpected RPC work')}}};
+ // A holiday clock match still needs entitlement and authoritative provider status.
+ assert.equal((await runBackgroundAlerts(env,{now:Date.parse('2026-12-25T14:35:00Z')})).code,'ENTITLEMENT_UNVERIFIED');assert.equal(calls,0);
 });

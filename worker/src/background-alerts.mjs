@@ -4,6 +4,14 @@ import {normalizeCandles} from './market-api.mjs';
 import {validateState} from './private-state.mjs';
 
 const LEASE_MS=120000,MAX_TASKS=20,MAX_SYMBOLS=2;
+// Clock-only admission optimization, never evidence that an exchange is open.
+const newYorkClock=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'short',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
+export function inBackgroundCheckWindow(now){
+ const parts=Object.fromEntries(newYorkClock.formatToParts(new Date(now)).map(part=>[part.type,part.value]));
+ const minute=Number(parts.hour)*60+Number(parts.minute);
+ return !['Sat','Sun'].includes(parts.weekday)&&minute>=575&&minute<960;
+}
+
 export const ACQUIRE_ALERT_LEASE_SQL=`INSERT INTO alert_scheduler(name,lease_owner,lease_until_ms)
 VALUES ('price-alerts',?1,?2)
 ON CONFLICT(name) DO UPDATE SET lease_owner=excluded.lease_owner,lease_until_ms=excluded.lease_until_ms
@@ -39,7 +47,9 @@ async function rpcJson(binding,input){
 /** Trusted scheduled entry, no public route and no owner impersonation. */
 export async function runBackgroundAlerts(env,{now=Date.now()}={}){
  if(env.BACKGROUND_ALERTS_ENABLED!=='true')return {status:'disabled',code:'BACKGROUND_DISABLED',triggered:0};
- if(!Number.isSafeInteger(now)||now<0||!env.DB||!env.MARKET_QUOTA_DB||typeof env.BACKGROUND_MARKET?.read!=='function')return {status:'error',code:'SERVICE_NOT_CONFIGURED',triggered:0};
+ if(!Number.isSafeInteger(now)||now<0||!Number.isFinite(new Date(now).getTime()))return {status:'error',code:'INVALID_SCHEDULE_TIME',triggered:0};
+ if(!inBackgroundCheckWindow(now))return {status:'skipped',code:'OUTSIDE_REGULAR_CHECK_WINDOW',triggered:0};
+ if(!env.DB||!env.MARKET_QUOTA_DB||typeof env.BACKGROUND_MARKET?.read!=='function')return {status:'error',code:'SERVICE_NOT_CONFIGURED',triggered:0};
  if(!entitlementReady(env,now))return {status:'blocked',code:'ENTITLEMENT_UNVERIFIED',triggered:0};
  const started=Date.now(),clock=()=>now+(Date.now()-started),leaseOwner=crypto.randomUUID();
  let acquired=false,cursor='',outcome='DATABASE_ERROR';const result={status:'ok',code:'CHECKED',triggered:0,checkedOwners:0,checkedSymbols:0,failedSymbols:0,conflicts:0};

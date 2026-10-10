@@ -39,3 +39,13 @@ Release failure and zero affected rows return explicit error with safe code; no 
 Independent final run: **32/32 tests passed** across actual-SQLite scheduler (12), provider quota (12) and provider adapter (8), zero failed. Syntax checks passed earlier. Builder additionally reports four NL/EN background-preference UI tests passed; attributed evidence, not independently rerun. No build/server/browser/production action by reviewer. Checked worker/wrangler.toml and worker/provider.wrangler.toml both set BACKGROUND_ALERTS_ENABLED=false; this review does not authorize silently activating the feature. Deployment must preserve private named binding, shared quota schema and disabled switches. Verified provider entitlement is still necessary for any later enabled run.
 
 Final lesson: a bounded cursor is not fair if one bad symbol always aborts before advancement. Per-symbol failure isolation must count failed work against the same resource bound and retain global quota fail-closed behavior. The actual-SQLite repeated-run regression closes this failure more meaningfully than a mocked happy path.
+
+## Regular-window quota correction recheck
+
+**VERDICT: PASS** for the new conservative scheduling filter. Enabled overnight/weekend cron invocations previously could spend background credits despite being unable to trigger regular-session alerts. Production remained globally disabled, so no actual budget was consumed by that old schedule.
+
+`inBackgroundCheckWindow` uses Intl America/New_York with weekday and h23 time, admitting weekdays 09:35 inclusive through 16:00 exclusive. `runBackgroundAlerts` validates the timestamp and skips outside that window before accessing DB, quota binding or provider RPC. This is expressly only a quota-saving admission filter: entitlement and authoritative current provider-open gates remain unchanged, and holidays/early closes are not asserted open from the local clock.
+
+Independent scheduler rerun **14/14 passed**, zero failures. Tests use throwing binding getters to prove zero off-hours database/quota/RPC access; cover weekends, overnight, premarket, 09:34:59, 16:00, afterhours, both DST transitions and a holiday clock match that remains blocked without entitlement. Additional independent EST/EDT fixtures confirmed 09:35 and 15:59:59 admitted, 16:00 rejected in January and July. No build/deploy/server or source edits performed.
+
+Security flags: no new concern. Activation/deployment and actual provider rights remain separate parent acceptance. Lesson: quota reservation alone does not prevent wasting a bounded budget overnight. Time-based admission can save work without substituting a local calendar for verified current market evidence.
