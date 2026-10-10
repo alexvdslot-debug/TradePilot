@@ -255,3 +255,5 @@ input,select,textarea{accent-color:#0878ad}
  .chart-controls{display:flex;flex-wrap:wrap;gap:8px}.chart-controls button{flex:1 1 auto;padding:10px}
 }
 @media(max-width:340px){.portfolio-cash-grid{grid-template-columns:1fr}.dashboard-kpis .workspace-heading{min-height:24px}.dashboard-kpis .card{min-height:0}}
+
+.chart-level-legend{margin:14px 0;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:#f7faff}.chart-level-legend .chart-legend{gap:8px 14px}.chart-level-legend span{display:inline-flex;align-items:center;gap:6px;max-width:100%}.chart-level-legend svg{flex-shrink:0}.chart-level-legend strong{display:inline;font-size:inherit;margin:0;letter-spacing:0}.candle.rising .volume-bar{fill:#62aa96;opacity:.8}.candle.falling .volume-bar{fill:#c67a80;opacity:.8}
