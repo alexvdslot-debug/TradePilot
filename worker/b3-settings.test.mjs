@@ -24,7 +24,7 @@ const env={DB:db(),ACCESS_TEAM_DOMAIN:'team.cloudflareaccess.com',ACCESS_AUD:'ap
 const originalFetch=globalThis.fetch;
 test.before(()=>{globalThis.fetch=async()=>new Response(JSON.stringify({keys:[jwk]}),{status:200})});
 test.after(()=>{globalThis.fetch=originalFetch});
-function req(path,sub,method='GET',body,extra={}){return new Request('https://api.example.test'+path,{method,headers:{...(sub?{'Cf-Access-Jwt-Assertion':token(sub)}:{}),...(body?{'content-type':'application/json','origin':env.ALLOWED_ORIGIN,'x-tradepilot-csrf':'1'}:{}),...extra},body:body?JSON.stringify(body):undefined})}
+function req(path,sub,method='GET',body,extra={}){return new Request('https://api.example.test'+path,{method,headers:{...(sub?{'Cf-Access-Jwt-Assertion':token(sub)}:{}),...(body?{'content-type':'application/json','origin':'https://api.example.test','x-tradepilot-csrf':'1'}:{}),...extra},body:body?JSON.stringify(body):undefined})}
 test('unauthenticated and unconfigured access fail closed',async()=>{assert.equal((await settingsApi(req('/api/v1/settings'),env)).status,401);assert.equal((await settingsApi(req('/api/v1/settings','A'),{...env,ACCESS_AUD:''})).status,503)});
 test('user isolation, defaults and optimistic concurrency',async()=>{
  const a=await settingsApi(req('/api/v1/settings','A'),env),b=await settingsApi(req('/api/v1/settings','B'),env);
