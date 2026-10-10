@@ -21,3 +21,11 @@ jobs:
           node --check pro/indicators.mjs
           node --check worker/src/index.mjs
           node --check worker/src/b3-settings.mjs
+          node - <<'NODE'
+          const fs=require('fs'),vm=require('vm');
+          const html=fs.readFileSync('pro/index.html','utf8');
+          const js=html.split('<script>')[1]?.split('</script>')[0];
+          if(!js)throw Error('Missing pro script');
+          new vm.Script(js,{filename:'pro/index.html'});
+          for(const id of ['settings','settingsForm','settingsShortcut','saveSettings','accountStatus'])if(!html.includes('id="'+id+'"'))throw Error('Missing B3 UI: '+id);
+          NODE
