@@ -61,3 +61,5 @@ Prior releaseCI caught the newabovefoldtest failing only on Linuxfonts (bottom76
 Lesson: OSfontmetrics affect wrapping and verticalcomposition. Keep overviewstatus concise, give expandedexplanation a separate place, and use CI to verify viewportrequirements rather than weakening those assertions.
 
 Bright candidate passed175unitand184browserchecks. Independentpresentationreview PASS; root scoped riskordering to mobileand excluded allusercontent from emptyillustrationdecoration. The publicationgate remains exactfinalsourcechecks and LinuxCI beforeproduction.
+
+Screenshot review caught an initialemptybooking displaying raw INVALID_DECIMAL before any input. The livepreview now shows only its concisecompletionhint and disablesSave until requiredfields are present; actualoversell/invalidnumbers still displaytheir validationerrors. This prevents an emptyform reading as an applicationfailure without changing accounting. The existingoversell regression now explicitly checks the initialstate.
