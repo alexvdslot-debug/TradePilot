@@ -27,5 +27,9 @@ jobs:
           const js=html.split('<script>')[1]?.split('</script>')[0];
           if(!js)throw Error('Missing pro script');
           new vm.Script(js,{filename:'pro/index.html'});
-          for(const id of ['settings','settingsForm','settingsShortcut','saveSettings','accountStatus'])if(!html.includes('id="'+id+'"'))throw Error('Missing B3 UI: '+id);
+          for(const id of ['settings','settingsForm','settingsShortcut','saveSettings','accountStatus','loginLink','logoutLink'])if(!html.includes('id="'+id+'"'))throw Error('Missing B3 UI: '+id);
+          const login=html.match(/id="loginLink" href="([^"]+)"/)?.[1];
+          const logout=html.match(/id="logoutLink" href="([^"]+)"/)?.[1];
+          if(login!=='https://tradepilot-pro-api.alexvdslot.workers.dev/api/v1/session')throw Error('Login must point to Access-protected API origin');
+          if(logout!=='https://tradepilot-pro-api.alexvdslot.workers.dev/cdn-cgi/access/logout')throw Error('Logout must use Access-protected origin');
           NODE
