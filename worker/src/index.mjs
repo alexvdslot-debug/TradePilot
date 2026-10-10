@@ -1,3 +1,4 @@
+import {settingsApi} from './b3-settings.mjs';
 /**
  * TradePilot Pro market-data edge. Deploy as Cloudflare Worker.
  * Set TWELVE_DATA_API_KEY as a Worker secret and ALLOWED_ORIGIN as a variable.
@@ -7,6 +8,8 @@ const SYMBOL=/^[A-Z][A-Z0-9.]{0,9}$/;
 const INTERVALS=new Set(['5min','15min']);
 function response(body,status=200,headers={}){return new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff',...headers}})}
 export default {async fetch(request,env){
+  const accountResponse=await settingsApi(request,env);
+  if(accountResponse)return accountResponse;
   const url=new URL(request.url);
   const origin=request.headers.get('origin');
   const allowed=env.ALLOWED_ORIGIN;
