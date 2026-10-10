@@ -22,7 +22,7 @@ function pageContent(id){if(id==='dashboard')return dashboard();if(id==='setting
  const [title,desc]=pageText[id]||pageText.dashboard;
  return '<p class="eyebrow">TradePilot Pro</p><h1>'+(id==='dashboard'?greeting()+', Alexander':title)+'</h1><p class="muted">'+desc+'</p>'+(id==='dashboard'?'<div class="grid"><section class="card"><h2>Portefeuillewaarde</h2><strong>—</strong><p class="muted">Nog geen gekoppelde portefeuilledata</p></section><section class="card"><h2>Marktstatus</h2><strong>Niet verbonden</strong><p class="muted">Geen geverifieerde actuele koersen</p></section><section class="card"><h2>Kansen</h2><strong>—</strong><p class="muted">Scanner nog niet aangesloten</p></section></div>':'<div class="card" style="margin-top:24px"><h2>Functie in ontwikkeling</h2><p class="muted">De route werkt. De inhoud wordt in een volgende bouwfase aangesloten en getest.</p></div>')+'<div class="notice">Ontwikkelversie · Geen live marktdata, brokerkoppeling of handelsadvies.</div>'}
 
-const accountApi='https://tradepilot-pro-api.alexvdslot.workers.dev';
+const accountApi=location.hostname==='tradepilot-pro-api.alexvdslot.workers.dev'?location.origin:'https://tradepilot-pro-api.alexvdslot.workers.dev';
 let accountVersion=null;
 function setAccountEnabled(enabled){const form=document.getElementById('account-settings');if(form)for(const input of form.elements)input.disabled=!enabled}
 async function accountFetch(endpoint,options={}){
