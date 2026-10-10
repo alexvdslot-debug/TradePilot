@@ -1,7 +1,22 @@
 const pages=[['dashboard','Dashboard','home'],['portfolio','Portfolio','portfolio'],['radar','Kansen','radar'],['analyzer','Analyzer','analyzer'],['journal','Journal','journal']];
 const app=document.getElementById('app');
 let searchOpen=false,notificationOpen=false,searchCategory='Aandelen',lastFocus=null;
-const dashboardPreferences={name:null,timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone};
+const dashboardPreferences={name:null,timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone,locale:null,currency:null,riskBudget:null,loaded:false};
+const escapeHtml=value=>String(value).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+function applyAccountSettings(data){
+ dashboardPreferences.name=typeof data.display_name==='string'?data.display_name:null;
+ dashboardPreferences.timeZone=data.timezone||Intl.DateTimeFormat().resolvedOptions().timeZone;
+ dashboardPreferences.locale=data.locale||null;
+ dashboardPreferences.currency=data.display_currency||null;
+ dashboardPreferences.riskBudget=data.risk_budget_eur||null;
+ dashboardPreferences.loaded=true;
+ refreshGreeting();refreshAccountSummary();
+}
+function clearAccountSettings(){
+ dashboardPreferences.name=null;dashboardPreferences.timeZone=Intl.DateTimeFormat().resolvedOptions().timeZone;
+ dashboardPreferences.locale=null;dashboardPreferences.currency=null;dashboardPreferences.riskBudget=null;dashboardPreferences.loaded=false;
+ refreshGreeting();refreshAccountSummary();
+}
 const svg=id=>'<svg class="ui-icon" aria-hidden="true"><use href="./assets/icons.svg#'+id+'"></use></svg>';
 const route=()=>{const last=location.pathname.replace(/\/$/,'').split('/').pop();return !last||last==='index.html'||last==='app'?'dashboard':last};
 const pageText={
@@ -14,9 +29,10 @@ const pageText={
 function iconButton(label,symbol,id){return '<button type="button" class="icon-button" aria-label="'+label+'" id="'+id+'">'+svg(symbol)+'</button>'}
 function tabs(cls){return '<nav class="'+cls+'" aria-label="Hoofdnavigatie">'+pages.map(([id,label,symbol])=>'<a class="tab" href="./'+id+'" data-route="'+id+'" '+(route()===id?'aria-current="page"':'')+'><span aria-hidden="true">'+symbol+'</span>'+label+'</a>').join('')+'</nav>'}
 function greeting(date=new Date(),timeZone=dashboardPreferences.timeZone){let hour;try{hour=Number(new Intl.DateTimeFormat('en-GB',{hour:'2-digit',hourCycle:'h23',timeZone}).format(date))}catch{hour=date.getHours()}return hour<5?'Goedenacht':hour<12?'Goedemorgen':hour<18?'Goedemiddag':hour<23?'Goedenavond':'Goedenacht'}
-function dashboard(){const name=dashboardPreferences.name;return '<div data-testid="dashboard"><p id="connectivity-notice" class="notice" role="alert" hidden>Geen internetverbinding. Gegevens kunnen niet worden vernieuwd.</p><p class="eyebrow">Jouw tradingoverzicht</p><h1 id="dashboard-greeting">'+greeting()+(name?', '+name:'')+'</h1><p class="muted">Je persoonlijke handelscockpit. Gegevens verschijnen zodra je account en betrouwbare bronnen zijn aangesloten.</p><div class="notice" role="status">Actuele marktgegevens niet beschikbaar · Geen gekoppelde marktfeed of geverifieerde beursfase.</div><div class="dashboard-kpis">'+[['Portefeuillewaarde','Nog niet beschikbaar','Geen gekoppelde portefeuille'],['Dagresultaat','Nog niet beschikbaar','Geen gevalideerde posities of koersen'],['Kapitaal onder risico','Nog niet beschikbaar','Risicobudget nog niet ingesteld'],['Beschikbare cash','Nog niet beschikbaar','Geen gekoppeld cash-ledger']].map(([title,value,desc])=>'<section class="card"><h2>'+title+'</h2><strong>'+value+'</strong><p class="muted">'+desc+'</p></section>').join('')+'</div><div class="dashboard-columns"><section class="card"><h2>Mijn posities</h2><p class="muted">Nog geen portefeuille gekoppeld. Posities en resultaten worden na veilige accountkoppeling getoond.</p><a class="text-link" href="./portfolio" data-route="portfolio">Bekijk Portfolio →</a></section><section class="card"><h2>Risico & marktstatus</h2><p class="muted">Concentratie en koersdekking onbekend. Zonder gevalideerde marktdata worden geen risicoscores berekend.</p><p class="data-label">Bron: niet verbonden · Koerstijd: onbekend · Handelsfase: onbekend · Vertraging: onbekend</p></section></div><section class="card dashboard-section"><h2>Kansen voor 1–5 handelsdagen</h2><strong>Nog geen bevestigde kansen</strong><p class="muted">De scanner is nog niet aangesloten. Wachten is een geldige handelskeuze; er worden geen fictieve signalen getoond.</p><a class="text-link" href="./radar" data-route="radar">Bekijk Kansen →</a></section><div class="dashboard-columns dashboard-section"><section class="card"><h2>Watchlist</h2><p class="muted">Nog geen watchlistgegevens beschikbaar.</p><a class="text-link" href="./radar" data-route="radar">Naar Kansen →</a></section><section class="card"><h2>Recente handelsplannen</h2><p class="muted">Nog geen gekoppelde handelsplannen.</p><a class="text-link" href="./journal" data-route="journal">Open Journal →</a></section></div><p class="dashboard-footer">Analyses zijn scenario’s, geen gegarandeerde uitkomsten. Geen live marktdata of brokerkoppeling.</p></div>'}
+function dashboard(){const name=dashboardPreferences.name;return '<div data-testid="dashboard"><p id="connectivity-notice" class="notice" role="alert" hidden>Geen internetverbinding. Gegevens kunnen niet worden vernieuwd.</p><p class="eyebrow">Jouw tradingoverzicht</p><h1 id="dashboard-greeting">'+greeting()+(name?', '+escapeHtml(name):'')+'</h1><p class="muted">Je persoonlijke handelscockpit. Gegevens verschijnen zodra je account en betrouwbare bronnen zijn aangesloten.</p><div class="notice" role="status">Actuele marktgegevens niet beschikbaar · Geen gekoppelde marktfeed of geverifieerde beursfase.</div><p class="data-label" id="account-summary" role="status">Accountvoorkeuren laden…</p><div class="dashboard-kpis">'+[['Portefeuillewaarde','Nog niet beschikbaar','Geen gekoppelde portefeuille'],['Dagresultaat','Nog niet beschikbaar','Geen gevalideerde posities of koersen'],['Kapitaal onder risico','Nog niet beschikbaar','Risicobudget per trade staat bij accountvoorkeuren'],['Beschikbare cash','Nog niet beschikbaar','Geen gekoppeld cash-ledger']].map(([title,value,desc])=>'<section class="card"><h2>'+title+'</h2><strong>'+value+'</strong><p class="muted">'+desc+'</p></section>').join('')+'</div><div class="dashboard-columns"><section class="card"><h2>Mijn posities</h2><p class="muted">Nog geen portefeuille gekoppeld. Posities en resultaten worden na veilige accountkoppeling getoond.</p><a class="text-link" href="./portfolio" data-route="portfolio">Bekijk Portfolio →</a></section><section class="card"><h2>Risico & marktstatus</h2><p class="muted">Concentratie en koersdekking onbekend. Zonder gevalideerde marktdata worden geen risicoscores berekend.</p><p class="data-label">Bron: niet verbonden · Koerstijd: onbekend · Handelsfase: onbekend · Vertraging: onbekend</p></section></div><section class="card dashboard-section"><h2>Kansen voor 1–5 handelsdagen</h2><strong>Nog geen bevestigde kansen</strong><p class="muted">De scanner is nog niet aangesloten. Wachten is een geldige handelskeuze; er worden geen fictieve signalen getoond.</p><a class="text-link" href="./radar" data-route="radar">Bekijk Kansen →</a></section><div class="dashboard-columns dashboard-section"><section class="card"><h2>Watchlist</h2><p class="muted">Nog geen watchlistgegevens beschikbaar.</p><a class="text-link" href="./radar" data-route="radar">Naar Kansen →</a></section><section class="card"><h2>Recente handelsplannen</h2><p class="muted">Nog geen gekoppelde handelsplannen.</p><a class="text-link" href="./journal" data-route="journal">Open Journal →</a></section></div><p class="dashboard-footer">Analyses zijn scenario’s, geen gegarandeerde uitkomsten. Geen live marktdata of brokerkoppeling.</p></div>'}
 function updateConnectivity(){const notice=document.getElementById('connectivity-notice');if(!notice)return;notice.hidden=navigator.onLine}
 function refreshGreeting(){const el=document.getElementById('dashboard-greeting');if(el)el.textContent=greeting()+(dashboardPreferences.name?', '+dashboardPreferences.name:'')}
+function refreshAccountSummary(){const el=document.getElementById('account-summary');if(!el)return;const p=dashboardPreferences;if(!p.loaded){el.textContent='Accountvoorkeuren niet geladen';return}el.textContent='Accountvoorkeuren · '+(p.locale==='nl-NL'?'Nederlands':p.locale==='en-US'?'English':p.locale)+' · '+p.timeZone+' · '+p.currency+' · Risicobudget per trade: € '+p.riskBudget+' (geen portefeuille-exposure)'}
 function settingsPage(){return '<button class="back" data-back>← Terug</button><p class="eyebrow">Account en voorkeuren</p><h1>Instellingen</h1><p class="muted">Beveiligde accountinstellingen via Cloudflare Access. Je portefeuille wordt nog niet in de cloud opgeslagen.</p><section class="card settings-card"><p id="account-status" role="status" aria-live="polite">Verbinding controleren…</p><p><a class="text-link" id="account-login" href="https://tradepilot-pro-api.alexvdslot.workers.dev/api/v1/session" target="_blank" rel="noopener noreferrer">Beveiligd inloggen ↗</a></p><form id="account-settings"><label for="profile-name">Weergavenaam</label><input id="profile-name" maxlength="80" autocomplete="nickname"><label for="profile-locale">Taal</label><select id="profile-locale"><option value="nl-NL">Nederlands</option><option value="en-US">English</option></select><label for="profile-zone">Tijdzone</label><select id="profile-zone"><option value="Europe/Amsterdam">Amsterdam</option><option value="America/New_York">New York</option><option value="UTC">UTC</option></select><label for="profile-currency">Weergavevaluta</label><select id="profile-currency"><option value="EUR">EUR</option><option value="USD">USD</option></select><label for="profile-risk">Risicobudget per trade (EUR)</label><input id="profile-risk" inputmode="decimal" placeholder="100.00" required><button class="primary" id="account-save" type="submit" disabled>Opslaan</button></form><p id="account-message" role="status" aria-live="polite"></p><button class="primary" id="account-reload" type="button">Opnieuw laden</button><p><a class="text-link" href="https://tradepilot-pro-api.alexvdslot.workers.dev/cdn-cgi/access/logout">Uitloggen bij Cloudflare Access ↗</a></p></section>'}
 function pageContent(id){if(id==='dashboard')return dashboard();if(id==='settings')return settingsPage();
  const [title,desc]=pageText[id]||pageText.dashboard;
@@ -46,22 +62,20 @@ async function loadAccount(){
   document.getElementById('profile-zone').value=data.timezone;
   document.getElementById('profile-currency').value=data.display_currency;
   document.getElementById('profile-risk').value=data.risk_budget_eur;
-  dashboardPreferences.name=data.display_name||null;
-  dashboardPreferences.timeZone=data.timezone;
+  applyAccountSettings(data);
   status.textContent='Ingelogd · instellingen geladen (versie '+data.version+')';
   setAccountEnabled(true);
  }catch(e){
+  if(e.status===401||e.status===403)clearAccountSettings();
   status.textContent=e.status===401?'Niet ingelogd: gebruik de beveiligde inloglink.':e.status===403?'Toegang geweigerd.':e.status===503?'Accountservice niet beschikbaar.':'Instellingen niet bereikbaar ('+e.message+'). Mogelijk blokkeert de browser cookies tussen domeinen.';
  }
 }
 async function hydrateDashboardProfile(){
  try{
   const data=await accountFetch('settings');
-  dashboardPreferences.name=data.display_name||null;
-  dashboardPreferences.timeZone=data.timezone;
-  refreshGreeting();
+  applyAccountSettings(data);
  }catch{
-  // Keep a neutral greeting if the authenticated profile cannot be loaded.
+  clearAccountSettings();
  }
 }
 function bindAccountSettings(){
@@ -72,7 +86,7 @@ function bindAccountSettings(){
   setAccountEnabled(false);document.getElementById('account-message').textContent='Opslaan…';
   try{
    const data=await accountFetch('settings',{method:'PATCH',headers:{'content-type':'application/json','x-tradepilot-csrf':'1'},body:JSON.stringify(payload)});
-   accountVersion=data.version;dashboardPreferences.name=data.display_name||null;dashboardPreferences.timeZone=data.timezone;
+   accountVersion=data.version;applyAccountSettings(data);
    document.getElementById('account-message').textContent='Opgeslagen in beveiligde database · versie '+data.version;
    setAccountEnabled(true);
   }catch(e){
@@ -104,13 +118,13 @@ function startApp(){
  splash.innerHTML='<div class="splash-brand"><svg class="splash-mark" viewBox="0 0 64 64" role="img" aria-label="TradePilot Pro logo"><rect width="64" height="64" rx="16" fill="#09111E"/><rect class="splash-bar bar-1" x="13" y="34" width="9" height="18" rx="4.5" fill="#55C7ED"/><rect class="splash-bar bar-2" x="27" y="23" width="9" height="29" rx="4.5" fill="#398DEB"/><rect class="splash-bar bar-3" x="41" y="12" width="9" height="40" rx="4.5" fill="#3773E7"/></svg><h1>TradePilot <span>Pro</span></h1><p id="splash-status" class="sr-only">App voorbereiden…</p></div>';
  document.body.appendChild(splash);
  const slow=setTimeout(()=>{const status=document.getElementById('splash-status');if(status){status.className='splash-status';status.textContent='App voorbereiden…'}},2000);
- try{render();void hydrateDashboardProfile();requestAnimationFrame(()=>{const done=()=>{clearTimeout(slow);splash.remove()};if(matchMedia('(prefers-reduced-motion: reduce)').matches)done();else splash.addEventListener('animationend',e=>{if(e.target.classList.contains('bar-3'))done()})})}
+ try{render();refreshAccountSummary();void hydrateDashboardProfile();requestAnimationFrame(()=>{const done=()=>{clearTimeout(slow);splash.remove()};if(matchMedia('(prefers-reduced-motion: reduce)').matches)done();else splash.addEventListener('animationend',e=>{if(e.target.classList.contains('bar-3'))done()})})}
  catch(e){clearTimeout(slow);const status=document.getElementById('splash-status');if(status){status.className='splash-status';status.textContent='Starten mislukt. Ververs de pagina om opnieuw te proberen.'}throw e}
 }
 startApp();
 setInterval(()=>{if(!document.hidden)refreshGreeting()},60000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshGreeting()});
-window.addEventListener('focus',refreshGreeting);
+window.addEventListener('focus',()=>{refreshGreeting();if(!document.hidden)void hydrateDashboardProfile()});
 
 window.addEventListener('online',updateConnectivity);
 window.addEventListener('offline',updateConnectivity);
