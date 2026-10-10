@@ -23,3 +23,19 @@ test('B3 missing Access/D1 fails closed without data',async()=>{
  assert.equal(r.status,503);
  assert.equal(r.headers.get('access-control-allow-origin'),env.ALLOWED_ORIGIN);
 });
+
+test('B3 same-origin app assets are served with secure CSP and no-store',async()=>{
+ const root=await worker.fetch(req('/'),env);
+ assert.equal(root.status,302);
+ assert.equal(new URL(root.headers.get('location')).pathname,'/app/');
+ for(const path of ['/app/','/app/main.js','/app/styles.css','/app/assets/icons.svg']){
+  const r=await worker.fetch(req(path),env);
+  assert.equal(r.status,200,path);
+  assert.equal(r.headers.get('cache-control'),'no-store');
+  assert.match(r.headers.get('content-security-policy'),/connect-src 'self'/);
+ }
+ const missing=await worker.fetch(req('/app/nope'),env);
+ assert.equal(missing.status,404);
+ const blocked=await worker.fetch(new Request('https://example.com/app/',{method:'POST'}),env);
+ assert.equal(blocked.status,405);
+});
