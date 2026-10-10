@@ -72,3 +72,8 @@ Core interaction repair described in UX_ACCEPTANCE_2026-10-10.md, without changi
 
 ### UX CI portability verification
 Source4a78 passed quality38039782824 and general38039782814. Browser38039782812 passed113 interactions but failed three screenshot saves because `/private/tmp` is macOS-specific. Corrected tests use Playwright `testInfo.outputPath`. Fix commitfb864e70f1c277dc59c36eb85eb4fc28047fa46a passed allthree workflows: app38040118377, quality38040118531, general38040118360. Local portable screenshot regression6/6 passed. This correction does not change deployed UI assets.
+
+## UX quota drilldown final release
+Source5e5f52bcd9b8cdfb4e1a6812fe727c0471eacae1; mainb40cbddc-aa3b-418a-ab1e-6e80ad89cba6; deploymentfaf5b78c-6cc7-4b18-964d-b5798a520098,100%,2026-10-10T09:11:30.490584Z. Asset8f63b9f1bef61d06dc2e347ea3560e6dc688577fb39e9987c8c8940b0890e2c0. Exact17-module source comparison PASS. Node152/152, full browser122/122, focusedcache20/20, syntax/assets/diff and read-only review PASS. Live broadscan→NVDA15min chart PASS, genuine historical waiting state, no console errors or financial writes, stateversion1. Bindings/provider/secret retained. Last-fix rollbackmain1a4dae4b-5a3b-4c8b-afa0-7dfa5d0364a2.
+
+Final deployed source5e5f52b passed allthree GitHub workflows: app/browser38040472994, quality38040473037, general38040473065. Documentation followups do not change deployed assets.

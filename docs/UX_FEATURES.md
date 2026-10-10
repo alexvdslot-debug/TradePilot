@@ -121,8 +121,11 @@ no automatic retry loop or bypass of the provider limit.
 
 New regressions cover eight scan requests followed by successful NVDA 15-minute
 drill-down without a ninth call; explicit five-minute change requiring a new call;
-friendly quota/retry; cache expiration; and invalid retrieval timestamps. Final
-focused results follow the synchronized parent asset build and browser run.
+friendly quota/retry; cache expiration; and invalid retrieval timestamps.
+Synchronized assets `8f63b9f1…` were tested with the same focused command above:
+**20 passed, 0 failed** (10 Chromium and 10 WebKit cases), including all quota/cache
+regressions. The localhost browser run exited successfully before the parent full
+browser matrix. This local evidence does not claim the correction is deployed.
 
 Lesson: network-cost acceptance must cover consecutive user actions across routes.
 A passing scan and a passing Analyzer in isolation do not prove their combined

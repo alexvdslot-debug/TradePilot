@@ -69,3 +69,6 @@ Behoud een werkende platformopzet voordat een nieuw framework wordt toegevoegd. 
 
 ## 10. Opleverstatus
 Uitvoerbare B3–B8-functionaliteit gepubliceerd op 10 oktober 2026. Exacte bronversie, testuitkomsten, behoud van gebruikersdata, providerquota en rollback: [deploymentbewijs](DEPLOYMENT_2026-10-10.md). Live handelssignalen blijven geblokkeerd op externe datarechten/actualiteit; broker- en fysieke telefoonacceptatie staan afzonderlijk open.
+
+## 11. UX-prioriteit en acceptatie
+Na de technische oplevering zijn de kerninteracties hersteld volgens DESIGN_BASELINE_V1: contextueel zoeken, betrouwbare unreadstatus, waarde vóór administratie, tickerdoorklikken, intervalverversing, OHLCV/VWAP/RSI/MACD, scenariodraft naar Journal en mobiele bediening. Zie UX_ACCEPTANCE_2026-10-10.md voor bewijs en afzonderlijke resterende geavanceerde schermdetails. Brede scan→Analyzer hergebruikt alleen exact passende feeds met strikt geldige ophaaltijd binnen60seconden; kwaliteitsregels worden opnieuw toegepast.
