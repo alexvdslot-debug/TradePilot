@@ -8,9 +8,16 @@
 - `worker/b3-settings.test.mjs`: security unit-tests met gesigneerde test-JWT en geïsoleerde in-memory D1 mock.
 - CI-workflow voert deze unit-tests uit.
 
+## Uitgevoerde stagingstappen (10 oktober 2026)
+- Cloudflare D1 **tradepilot-pro-staging** aangemaakt in EU-jurisdictie, ID `052feeda-74df-4a2e-923f-0a2bf1d97d08`.
+- Migratie `0002_identity_settings.sql` toegepast; beide tabellen `users` en `user_settings` via echte D1-query bevestigd.
+- Worker `tradepilot-pro-api` geüpload en `workers.dev`-route geactiveerd. URL: `https://tradepilot-pro-api.alexvdslot.workers.dev/`. Geen Access-instellingen: B3 retourneert bewust 503. Dit is **geen functionerende login**.
+- `pro/index.html` bevat nu instellingenformulier met accountstatus, GET/PATCH, foutmeldingen en versiecontrole; code is in GitHub, nog niet als definitieve mobiele release geverifieerd.
+- Cloudflare API meldt expliciet `access.api.error.not_enabled`: **Zero Trust Access moet door de accounteigenaar worden ingeschakeld in het Cloudflare-dashboard**. Zonder die stap kan er geen echte Access-login en geen geldige `ACCESS_AUD`/team-issuer worden ingesteld.
+
 ## Nog verplicht voor definitieve B3-acceptatie
 - Cloudflare Access applicatie en login-provider configureren, correcte issuer/audience instellen en Access-beleid vastleggen; echte login/logout browserflows en 401/403 testen.
-- D1-database provisioneren, `DB` binding toevoegen en migraties toepassen op staging; vervolgens echte D1 integratietests voor A/B-isolatie, schema, transacties en concurrente writes.
+- Echte D1 integratietests voor A/B-isolatie, schema, transacties en concurrente writes (database en migratie zijn nu geprovisioneerd).
 - Cross-origin cookies en CORS/CSRF-beleid end-to-end testen; GitHub Pages en Access op verschillende domeinen vereisen expliciet cookiebeleid. Niet aannemen dat browsercookies werken zonder verificatie.
 - Instellingenscherm daadwerkelijk verbinden met `GET/PATCH`, inclusief loading/empty/error/401/403/409/offline, taal/tijdzone, EUR/USD en risicobudget; na reload persistent aantonen.
 - JWT-certs caching/timeout/rate-limit en operationele beveiliging (CSP, sessieherroeping, auditlogging) afronden.
