@@ -158,7 +158,7 @@ function navigate(id,{symbol,recordId,alert=false}={}){
  if(tickerValid(symbol))destination.searchParams.set('symbol',symbol);
  if(alert&&tickerValid(symbol))destination.searchParams.set('alert','1');
  if(typeof recordId==='string'&&recordId.length<=128)destination.searchParams.set('record',recordId);
- history.pushState({},'',destination.pathname+destination.search);render();document.getElementById('main')?.focus();
+ history.pushState({},'',destination.pathname+destination.search);window.scrollTo({top:0,left:0,behavior:'instant'});render();document.getElementById('main')?.focus({preventScroll:true});
 }
 function applyPageContext(id){
  if(searchOpen||notificationOpen)return;

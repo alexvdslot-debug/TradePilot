@@ -26,6 +26,18 @@ async function fixture(page,{failSave=false,unreadCount=1}={}){
  return {get writes(){return writes},get state(){return state}};
 }
 async function search(page,category){await page.getByRole('button',{name:'Zoeken',exact:true}).click();await page.getByRole('button',{name:category,exact:true}).click();await page.locator('#search-input').fill('OPEN');await expect(page.locator('#search-results [role=option]').first()).toBeVisible();}
+for(const width of [1280,390])test(`tab navigation keeps the page at the top without shifting the shell at ${width}px`,async({page})=>{
+ await page.setViewportSize({width,height:720});await fixture(page);
+ const navigation=page.locator(width===390?'.bottom':'.tabs');
+ const headerTop=await page.locator('.header').evaluate(el=>el.getBoundingClientRect().top);
+ for(const target of ['portfolio','radar','journal','dashboard']){
+  await navigation.locator(`[data-route="${target}"]`).click();
+  await expect(page).toHaveURL(new RegExp(`/app/${target}$`));
+  await expect(page.locator('#main')).toBeFocused();
+  await expect.poll(()=>page.evaluate(()=>window.scrollY)).toBe(0);
+  expect(await page.locator('.header').evaluate(el=>el.getBoundingClientRect().top)).toBe(headerTop);
+ }
+});
 test('private search opens holdings and journal in their own context',async({page})=>{
  await fixture(page);await search(page,'Mijn portefeuille');await page.locator('#search-results [role=option]').first().click();
  await expect(page).toHaveURL(/\/app\/portfolio\?symbol=OPEN$/);await expect(page.locator('[data-ticker-context]')).toContainText('OPEN');
