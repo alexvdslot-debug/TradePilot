@@ -18,7 +18,8 @@
 - OPEN 5-minute and 15-minute charts returned real Twelve Data candles. Five-minute last candle opening 2026-10-09T19:55:00Z, retrieved 2026-10-10T07:55:00.565Z; close2.23 USD. This is historical weekend data, not a current tradable quote. UI correctly says Wachten and exposes unverified phase/delay.
 - Production ticker search OPEN returned Opendoor listings. Search does not invent a price.
 - Direct /app/analyzer/ redirects to canonical route and loads. Final progress message clears when chart completes, labels display Slotkoers/VWAP/RSI/Relatief barvolume.
-- Code commit e5b90f1 passed all three GitHub workflows. Bridge commit7518544 passed quality gate; final commit aba9363 passed quality gate while remaining browser workflows were still running when this record was written. Record final run outcomes separately if available.
+- Final code commit aba9363 passed all three GitHub workflows: app shell/browser run38036052872, general checks run38036052876, quality gates run38036052942. Bridge browser run38035934455 also succeeded.
+- Portfolio and Journal production routes rendered the empty real account state without console errors from the TradePilot app. No account financial data was modified during smoke checks.
 
 ## Rollback
 - Pre-release app version: df428d57-701c-437a-bdbc-c6c791471dd6 (deployment ff51aa6d-c213-4ccc-a183-d948b3a72a25).
