@@ -10,6 +10,11 @@ test('mobile navigation renders actual inline icons without horizontal overflow'
   await expect(bottom).toBeVisible();
   await page.screenshot({path:test.info().outputPath('tradepilot-mobile-'+width+'.png'),fullPage:true});
   await expect(bottom.locator('a.tab')).toHaveCount(5);
+  for(const label of ['Zoeken','Meldingen','Instellingen']){
+   const button=page.getByRole('button',{name:label,exact:true});
+   await expect(button.locator('svg.ui-icon')).toBeVisible();
+   expect(await button.locator('svg.ui-icon path,svg.ui-icon rect,svg.ui-icon circle').count()).toBeGreaterThan(0);
+  }
   for(const tab of await bottom.locator('a.tab').all()){
    const icon=tab.locator('svg.ui-icon');
    await expect(icon).toBeVisible();
@@ -18,6 +23,8 @@ test('mobile navigation renders actual inline icons without horizontal overflow'
    expect(box.width).toBeGreaterThanOrEqual(18);
    expect(box.height).toBeGreaterThanOrEqual(18);
    expect(await tab.evaluate(el=>getComputedStyle(el).whiteSpace)).toBe('nowrap');
+   const labelFits=await tab.evaluate(el=>el.scrollWidth<=el.clientWidth+1);
+   expect(labelFits,'navigation label fits at '+width+'px').toBe(true);
   }
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'viewport '+width+'px overflow').toBe(true);
  }
