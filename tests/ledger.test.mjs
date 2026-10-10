@@ -181,3 +181,20 @@ test('valid maximum-size reference and identifiers remain roundtrippable', () =>
   original.reference = '"'.repeat(500);
   assert.deepEqual(parseLedgerCSV(exportLedgerCSV([original])), [validateEvent(original)]);
 });
+
+test('existing holdings preserve exact average cost and do not invent cash or deposits',()=>{
+ const opening=event('OPENING_POSITION',{symbol:'OPEN',quantity:'15722',price:'2.363387'});
+ const ledger=calculateLedger([opening]);
+ assert.equal(ledger.positions[0].averageCost,'2.363387');
+ assert.equal(ledger.positions[0].quantity,'15722');
+ assert.equal(ledger.positions[0].costBasis,'37157.170414');
+ assert.equal(ledger.cash.USD,'0');assert.equal(ledger.deposits.USD,'0');
+ const exit=calculateLedger([opening,sell('22','3',{timestamp:'2026-10-10T14:00:00Z'})]);
+ assert.equal(exit.positions[0].quantity,'15700');assert.equal(exit.realized.USD,'14.005486');
+ assert.deepEqual(parseLedgerCSV(exportLedgerCSV([opening])),[validateEvent(opening)]);
+});
+test('opening holdings reject duplicate inventory and unsupported fees',()=>{
+ const opening=event('OPENING_POSITION',{symbol:'OPEN',quantity:'10',price:'2'});
+ error(()=>calculateLedger([opening,{...opening,id:'duplicate'}]),'OPENING_POSITION_NOT_FIRST');
+ error(()=>validateEvent({...opening,fee:'1'}),'OPENING_POSITION_FEE_NOT_ALLOWED');
+});

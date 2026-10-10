@@ -113,3 +113,15 @@ test('scan cache with an invalid retrieval timestamp is never reused',async({pag
  await expect(page.locator('[data-position-row=OPEN]')).toContainText('10');
  expect(store.get().events.map(e=>e.type)).toEqual(['DEPOSIT','BUY']);
  });
+
+test('existing holding saves without a cash deposit or purchase',async({page})=>{
+ const store=await setup(page);await ready(page,'portfolio');
+ await page.getByRole('button',{name:'Bestaande positie toevoegen',exact:true}).click();
+ await expect(page.locator('#ledger-form [name=type]')).toHaveValue('OPENING_POSITION');
+ await expect(page.locator('#ledger-live-preview')).toContainText('cashsaldo verandert niet');
+ for(const [name,value]of Object.entries({symbol:'OPEN',quantity:'15722',price:'2.363387'}))await page.locator('#ledger-form [name='+name+']').fill(value);
+ await expect(page.locator('#ledger-form button.primary')).toBeEnabled();await page.locator('#ledger-form button.primary').click();
+ await expect(page.locator('[data-position-row=OPEN]')).toContainText('15722');
+ expect(store.get().events).toHaveLength(1);expect(store.get().events[0].type).toBe('OPENING_POSITION');
+ await expect(page.locator('#ledger-filter-results')).toContainText('Beginpositie');
+});

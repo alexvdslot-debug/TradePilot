@@ -3,7 +3,7 @@ const SCALE = 10n ** 12n;
 export const MAX_LEDGER_EVENTS = 10000;
 export const MAX_LEDGER_CSV_CHARACTERS = 16_000_000;
 export const LEDGER_CSV_COLUMNS = Object.freeze(['id', 'timestamp', 'type', 'symbol', 'quantity', 'price', 'currency', 'amount', 'fee', 'feeCurrency', 'toCurrency', 'toAmount', 'reference']);
-const TYPES = new Set(['BUY', 'SELL', 'DEPOSIT', 'WITHDRAWAL', 'FX', 'FEE', 'FINANCING', 'MARGIN_DRAW', 'MARGIN_REPAY']);
+const TYPES = new Set(['OPENING_POSITION', 'BUY', 'SELL', 'DEPOSIT', 'WITHDRAWAL', 'FX', 'FEE', 'FINANCING', 'MARGIN_DRAW', 'MARGIN_REPAY']);
 const CURRENCIES = new Set(['EUR', 'USD']);
 
 export class LedgerError extends Error {
@@ -38,7 +38,7 @@ export function validateEvent(event) {
   if (!Number.isFinite(date.getTime()) || date.toISOString() !== expected) fail('INVALID_TIMESTAMP');
   if (!TYPES.has(event.type)) fail('INVALID_EVENT_TYPE');
   const normalized = { id: event.id, timestamp: date.toISOString(), type: event.type, currency: currency(event.currency), fee: normalizedDecimal(event.fee === undefined ? '0' : event.fee, 12, false), feeCurrency: currency(event.feeCurrency === undefined ? event.currency : event.feeCurrency) };
-  if (event.type === 'BUY' || event.type === 'SELL') {
+  if (['OPENING_POSITION', 'BUY', 'SELL'].includes(event.type)) {
     if (typeof event.symbol !== 'string' || !/^[A-Z][A-Z0-9.-]{0,19}$/.test(event.symbol)) fail('INVALID_SYMBOL');
     normalized.symbol = event.symbol;
     normalized.quantity = normalizedDecimal(event.quantity, 6, true);
@@ -51,6 +51,7 @@ export function validateEvent(event) {
       normalized.toAmount = normalizedDecimal(event.toAmount, 12, true);
     }
   }
+  if (event.type === 'OPENING_POSITION' && normalized.fee !== '0') fail('OPENING_POSITION_FEE_NOT_ALLOWED');
   const allowed = new Set(Object.keys(normalized).concat('reference'));
   if (Object.keys(event).some(key => !allowed.has(key) && event[key] !== '' && event[key] !== undefined)) fail('UNEXPECTED_EVENT_FIELD');
   if (event.reference !== undefined && event.reference !== '') {
@@ -82,15 +83,19 @@ export function calculateLedger(events, { allowMargin = false, method = 'average
     const curr = event.currency, feeCurr = event.feeCurrency;
     const fee = decimal(event.fee);
     const amount = event.amount ? decimal(event.amount) : 0n;
-    if (event.type === 'BUY' || event.type === 'SELL') {
+    if (['OPENING_POSITION', 'BUY', 'SELL'].includes(event.type)) {
       let position = positions.get(event.symbol);
+      if (event.type === 'OPENING_POSITION' && position) fail('OPENING_POSITION_NOT_FIRST');
       if (position && position.currency !== curr) fail('POSITION_CURRENCY_MISMATCH');
       if (!position) {
         position = { symbol: event.symbol, currency: curr, quantity: 0n, costBasis: 0n, realized: 0n };
         positions.set(event.symbol, position);
       }
       const quantity = decimal(event.quantity), gross = quantity * decimal(event.price) / SCALE;
-      if (event.type === 'BUY') {
+      if (event.type === 'OPENING_POSITION') {
+        position.quantity = quantity;
+        position.costBasis = gross;
+      } else if (event.type === 'BUY') {
         position.quantity += quantity;
         position.costBasis += gross + (feeCurr === curr ? fee : 0n);
         cash[curr] -= gross;
