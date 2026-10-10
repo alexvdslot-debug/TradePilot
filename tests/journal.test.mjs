@@ -35,3 +35,40 @@ test('closed losing, breakeven and later rebuy cycles count independently',()=>{
  const stats=journalStatistics([plan('j1',['b1','s1']),plan('j2',['b2','s2'],'reviewed')],events);
  assert.equal(stats.closedCount,2);assert.equal(stats.losses,1);assert.equal(stats.breakeven,1);assert.equal(stats.netByCurrency.USD,'-1');
 });
+
+test('explicit pre-execution risk produces R and duration; retrospective or mixed-currency risk does not',()=>{
+ const events=[deposit(),event('b','BUY','2','3',0),event('s','SELL','2','5',2)];
+ const row={...plan('j',['b','s']),createdAt:'2026-10-01T13:30:00Z',initialRisk:'2',riskRecordedAt:'2026-10-01T13:30:00Z',riskCurrency:'USD'};
+ const s=journalStatistics([row],events);assert.equal(s.averageR,'2');assert.equal(s.rSampleCount,1);assert.equal(s.metrics.USD.expectancy,'4');assert.equal(s.trades[0].durationHours,2/60);
+ assert.equal(journalStatistics([{...row,riskRecordedAt:'2026-10-01T14:01:00Z'}],events).averageR,null);
+});
+test('journal attachments constrain private raster data and safe HTTPS links',async()=>{
+ const {validateJournalDetails}=await import('../app/journal.mjs');const row={status:'planned'};
+ assert.doesNotThrow(()=>validateJournalDetails({...row,attachments:[{id:'l',kind:'link',name:'Source',url:'https://example.com/chart'}]}));
+ for(const url of ['javascript:alert(1)','http://example.com','https://user:secret@example.com'])assert.throws(()=>validateJournalDetails({...row,attachments:[{id:'l',kind:'link',name:'Source',url}]}));
+ assert.throws(()=>validateJournalDetails({...row,attachments:[{id:'i',kind:'image',name:'fake.png',dataUrl:'data:image/png;base64,'+btoa('not a png file')}]}));
+ const png='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==';
+ assert.doesNotThrow(()=>validateJournalDetails({...row,attachments:[{id:'i',kind:'image',name:'pixel.png',dataUrl:png}]}));
+});
+test('executed original thesis/levels/risk freeze while evaluation remains mutable',async()=>{
+ const {validateJournalChanges}=await import('../app/journal.mjs');const old={id:'j',symbol:'OPEN',status:'executed',thesis:'original',entry:'3',stop:'2',target1:'4',target2:'5'};
+ assert.doesNotThrow(()=>validateJournalChanges([{...old,evaluation:'lesson'}],[old],[]));
+ for(const change of [{thesis:'rewritten'},{initialRisk:'3',riskCurrency:'USD'},{status:'planned'}])assert.throws(()=>validateJournalChanges([{...old,...change}],[old],[]),/IMMUTABLE/);
+ const planned={...old,status:'planned',eventIds:['b']};assert.throws(()=>validateJournalChanges([{...planned,stop:'1'}],[planned],[event('b','BUY','1','3',0)]),/IMMUTABLE/);
+});
+
+test('journal lifecycle is derived from real partial fills and never from planned levels',async()=>{
+ const {journalLifecycle}=await import('../app/journal.mjs');const buy=event('b','BUY','2','3',0),partial=event('p','SELL','1','4',1),sell=event('s','SELL','1','4',2);
+ assert.equal(journalLifecycle(plan('j',[]),[]).status,'planned');assert.equal(journalLifecycle({...plan('j',[]),status:'draft'},[]).status,'draft');
+ assert.equal(journalLifecycle(plan('j',['b','p']),[buy,partial]).status,'active');
+ assert.equal(journalLifecycle(plan('j',['b','p','s']),[buy,partial,sell]).status,'closed');
+ assert.equal(journalLifecycle(plan('j',['b','p','s'],'reviewed'),[buy,partial,sell]).status,'reviewed');
+});
+
+test('spreadsheet journal export quotes multiline cells and neutralizes formula prefixes',async()=>{
+ const {exportJournalCSV}=await import('../app/journal.mjs');const row={...plan('j',[],'planned'),createdAt:'2026-10-01T12:00:00Z',thesis:'=SUM(1,2)',evaluation:'line 1\n"line 2"'};
+ const csv=exportJournalCSV([row]);assert.match(csv,/"'=SUM\(1,2\)"/);assert.match(csv,/"line 1\n""line 2"""/);assert.match(csv,/schema_version,id,symbol/);assert.ok(csv.endsWith('\r\n'));
+});
+test('deleting an executed original is blocked while unexecuted plan deletion remains allowed',async()=>{
+ const {validateJournalChanges}=await import('../app/journal.mjs');assert.throws(()=>validateJournalChanges([],[{id:'j',status:'executed'}],[]),/IMMUTABLE/);assert.doesNotThrow(()=>validateJournalChanges([],[{id:'j',status:'planned'}],[]));
+});

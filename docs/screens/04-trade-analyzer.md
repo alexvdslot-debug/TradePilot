@@ -1,4 +1,7 @@
 # TradePilot Pro — Scherm 04: Trade Analyzer
+
+> Current implementation verification: see [final conformance register](../FINAL_CONFORMANCE.md). Original version/status below records the design review. Light main screens and dark splash follow [DESIGN_BASELINE_V1](../DESIGN_BASELINE_V1.md); older dark-sidebar compositions are superseded. User-approved final completion is being audited and tested; do not infer implementation from this specification.
+
 **Versie 1.0 · 9 oktober 2026 · Status: gespecificeerd en kritisch gereviewd; niet gebouwd of visueel gevalideerd.**
 Afhankelijkheden: [Product Design Document](../PRODUCT_DESIGN_DOCUMENT.md), [Dashboard](01-dashboard.md), [Portfolio](02-portfolio.md), [Opportunity Radar](03-opportunity-radar.md).
 

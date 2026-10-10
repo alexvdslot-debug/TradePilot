@@ -1,4 +1,7 @@
 # TradePilot Pro — Scherm 03: Opportunity Radar
+
+> Current implementation verification: see [final conformance register](../FINAL_CONFORMANCE.md). Original version/status below records the design review. Light main screens and dark splash follow [DESIGN_BASELINE_V1](../DESIGN_BASELINE_V1.md); older dark-sidebar compositions are superseded. User-approved final completion is being audited and tested; do not infer implementation from this specification.
+
 **Versie 1.0 · 9 oktober 2026 · Status: multidisciplinair gereviewde specificatie; niet gebouwd of visueel getest.**
 Gebaseerd op [PDD](../PRODUCT_DESIGN_DOCUMENT.md), [Dashboard](01-dashboard.md) en [Portfolio](02-portfolio.md).
 

@@ -36,6 +36,30 @@ export function projectLedger(events, { asOf, allowMargin = false, method = 'ave
   return { ...calculateLedger(included, { allowMargin, method }), asOf: instant, eventCount: included.length, excludedEventCount: canonical.length - included.length };
 }
 
+/** Execution-derived cumulative realized P&L. Deposits/FX never become returns. */
+export function realizedHistory(events, { asOf = new Date().toISOString(), allowMargin = false, method = 'average' } = {}) {
+  const point = timestamp(asOf);
+  if (!Array.isArray(events) || events.length > MAX_LEDGER_EVENTS) fail('EVENT_LIMIT');
+  const normalized = Array.from(events, validateEvent);
+  // Validate duplicates across the full import, including rows after the cutoff.
+  if (new Set(normalized.map(event => event.id)).size !== normalized.length) fail('DUPLICATE_EVENT_ID');
+  const included = normalized.map((event,index)=>({...event,index})).filter(event=>event.timestamp<=point)
+    .sort((a,b)=>a.timestamp.localeCompare(b.timestamp)||a.index-b.index);
+  const ledger = calculateLedger(included.map(({index,...event})=>event),{allowMargin,method,includeRealizations:true});
+  const allocations = new Map(ledger.tradeRealizations.map(row=>[row.eventId,row]));
+  const cumulative = {EUR:0n,USD:0n};
+  const series = {EUR:[],USD:[]};
+  if(included.length) for(const currency of CURRENCIES) series[currency].push({timestamp:included[0].timestamp,value:'0',eventId:null});
+  for(const event of included){
+    const allocation=allocations.get(event.id);
+    if(!allocation)continue;
+    cumulative[allocation.currency]+=units(allocation.realized);
+    series[allocation.currency].push({timestamp:event.timestamp,value:display(cumulative[allocation.currency]),eventId:event.id});
+  }
+  return {asOf:point,method,basis:'cumulative-realized-average-cost',series,realized:ledger.realized,
+    eventCount:included.length,excludedEventCount:events.length-included.length,totalReturnAvailable:false};
+}
+
 function evidence(quote, symbol, currency, point, maxAgeMs, historical) {
   const result = { status: 'missing', reasons: ['MISSING_QUOTE'], price: null, source: null, asOf: null, delay: null, realtime: null, marketSession: null };
   if (!quote || typeof quote !== 'object' || Array.isArray(quote)) return result;
@@ -142,6 +166,9 @@ export function calculatePortfolio(events, {
   const needsFX = usd === null || usd !== 0n;
   const fxComplete = !needsFX || fxEvidence.status === qualifyingStatus;
   const euro = complete && fxComplete ? display(units(totals.EUR.netAssetValue) + (needsFX ? usd * units(fxEvidence.price) / SCALE : 0n)) : null;
+  const eurNative=totals.EUR.netAssetValue!==null?units(totals.EUR.netAssetValue):null;
+  const needsUSDFX=eurNative===null||eurNative!==0n;
+  const dollar=complete&&(!needsUSDFX||fxEvidence.status===qualifyingStatus)?display(units(totals.USD.netAssetValue)+(needsUSDFX?eurNative*SCALE/units(fxEvidence.price):0n)):null;
   // Separate, visibly unverified estimate: all holdings must at least have usable indicative prices.
   const indicativeCoverageComplete = positions.every(position => units(position.quantity) === 0n || position.marketValue !== null);
   const indicativeUSD = indicative.USD + units(ledger.cash.USD) - units(ledger.margin.USD);
@@ -153,6 +180,7 @@ export function calculatePortfolio(events, {
     valuationComplete: complete, currentValuationComplete: !historical && complete,
     asOf: point, evaluatedAt: clock, maxAgeMs,
     indicativeEURValue: euro, currentEURValue: !historical ? euro : null,
+    indicativeUSDValue:dollar,currentUSDValue:!historical?dollar:null,
     indicativeUnverifiedEURValue: unverifiedEuro,
     indicativeUnverifiedEURComplete: indicativeCoverageComplete && indicativeFXComplete,
     eurValuationComplete: complete && fxComplete, fx: { ...fxEvidence, required: needsFX },
@@ -163,4 +191,25 @@ export function calculatePortfolio(events, {
       excludedSymbols: positions.filter(position => units(position.quantity) > 0n && !position.covered).map(position => position.symbol),
     },
   };
+}
+
+/** Historical value from observed completed source candles; missing holdings produce gaps. */
+export function historicalValuationHistory(events, feeds, {asOf=new Date().toISOString(),maxPoints=60,allowMargin=false,method='average'}={}) {
+ const point=timestamp(asOf);
+ if(!Array.isArray(feeds)||!Number.isSafeInteger(maxPoints)||maxPoints<2||maxPoints>120)fail('INVALID_HISTORY_INPUT');
+ projectLedger(events,{asOf:point,allowMargin,method});
+ const times=[...new Set(feeds.flatMap(feed=>feed?.verified===true&&Array.isArray(feed.candles)?feed.candles.filter(c=>c.complete===true&&typeof c.completedAt==='string'&&Number.isFinite(Date.parse(c.completedAt))&&Date.parse(c.completedAt)<=Date.parse(point)).map(c=>timestamp(c.completedAt)):[]))].sort();
+ const sampled=times.length<=maxPoints?times:Array.from({length:maxPoints},(_,i)=>times[Math.round(i*(times.length-1)/(maxPoints-1))]);
+ const series={EUR:[],USD:[]};
+ for(const time of sampled){
+  const quotes=Object.fromEntries(feeds.filter(feed=>feed?.verified===true).map(feed=>[feed.symbol,quoteFromCandles(feed,{now:time})]));
+  const p=calculatePortfolio(events,{asOf:time,now:point,quotes,allowMargin,method});
+  for(const currency of CURRENCIES){
+   const holdings=p.positions.filter(p=>p.currency===currency&&units(p.quantity)>0n);
+   const complete=holdings.every(p=>p.marketValue!==null&&p.quote.source&&p.quote.asOf&&Date.parse(time)-Date.parse(p.quote.asOf)<=900000);
+   const value=complete?display(holdings.reduce((sum,p)=>sum+units(p.marketValue),units(p.cash[currency])-units(p.margin[currency]))):null;
+   series[currency].push({timestamp:time,value,coveredPositions:holdings.filter(p=>p.marketValue!==null).length,openPositions:holdings.length});
+  }
+ }
+ return {asOf:point,series,basis:'observed-completed-candle-value-including-cash-minus-margin',indicative:true,totalReturnAvailable:false,sourceCount:feeds.filter(f=>f?.verified===true).length,sampledPoints:sampled.length};
 }

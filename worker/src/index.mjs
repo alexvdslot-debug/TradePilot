@@ -12,11 +12,11 @@ const INTERVALS=new Set(['5min','15min']);
 function response(body,status=200,headers={}){return new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff',...headers}})}
 export default {async fetch(request,env){
   const apiPath=new URL(request.url).pathname;
-  if(apiPath==='/app'||/^\/app\/(dashboard|portfolio|radar|analyzer|journal|settings)\/$/.test(apiPath)){const target=apiPath==='/app'?'/app/':apiPath.slice(0,-1);return Response.redirect(new URL(target,request.url),302);}
+  if(apiPath==='/app'||/^\/app\/(dashboard|portfolio|radar|analyzer|journal|settings|alerts)\/$/.test(apiPath)){const target=apiPath==='/app'?'/app/':apiPath.slice(0,-1);return Response.redirect(new URL(target,request.url),302);}
   if(apiPath==='/'&&request.method==='GET')return Response.redirect(new URL('/app/',request.url),302);
   if(apiPath==='/app'||apiPath==='/app/'||apiPath.startsWith('/app/')){
     if(request.method!=='GET'&&request.method!=='HEAD')return response({error:'Method not allowed'},405);
-    const routed=['dashboard','portfolio','radar','analyzer','journal','settings'].includes(apiPath.slice(5));
+    const routed=['dashboard','portfolio','radar','analyzer','journal','settings','alerts'].includes(apiPath.slice(5));
     const assetPath=routed?'/app/index.html':apiPath==='/app'||apiPath==='/app/'?'/app/index.html':apiPath;
     if(!Object.prototype.hasOwnProperty.call(siteAssets,assetPath))return response({error:'Not found'},404);
     const mime=assetPath.endsWith('.html')?'text/html; charset=utf-8':(/\.m?js$/.test(assetPath))?'text/javascript; charset=utf-8':assetPath.endsWith('.css')?'text/css; charset=utf-8':'image/svg+xml';

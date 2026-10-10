@@ -5,10 +5,11 @@ test('mobile navigation renders actual inline icons without horizontal overflow'
  for(const width of [320,375,390,430]){
   await page.setViewportSize({width,height:844});
   await page.goto('http://127.0.0.1:8765/app/index.html');
-  await expect(page.locator('.splash')).toBeHidden({timeout:5000});
+  await page.locator('[data-boot-limited]').click();
+  await expect(page.locator('.splash')).toHaveCount(0);
   const bottom=page.locator('.bottom');
   await expect(bottom).toBeVisible();
-  await page.screenshot({path:test.info().outputPath('tradepilot-mobile-'+width+'.png'),fullPage:true});
+  if(test.info().project.name==='chromium')await page.screenshot({path:test.info().outputPath('tradepilot-mobile-'+width+'.png'),fullPage:true});
   await expect(bottom.locator('a.tab')).toHaveCount(5);
   for(const label of ['Zoeken','Meldingen','Instellingen']){
    const button=page.getByRole('button',{name:label,exact:true});
@@ -34,7 +35,8 @@ test('narrow financial cards remain readable and bottom navigation switches page
  await page.route('**/api/v1/**',route=>route.fulfill({status:503,json:{error:{code:'SERVICE_NOT_CONFIGURED'}}}));
  await page.setViewportSize({width:320,height:740});
  await page.goto('http://127.0.0.1:8765/app/index.html');
- await expect(page.locator('.splash')).toBeHidden({timeout:5000});
+ await page.locator('[data-boot-limited]').click();
+  await expect(page.locator('.splash')).toHaveCount(0);
  expect(await page.locator('.dashboard-kpis').evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length)).toBe(1);
  await page.locator('.bottom [data-route="journal"]').click();
  await expect(page.getByRole('heading',{name:'Trade Journal'})).toBeVisible();

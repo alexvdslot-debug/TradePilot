@@ -1,6 +1,6 @@
 import {verifiedIdentity} from './b3-settings.mjs';
 import {calculateLedger,validateEvent} from '../../app/ledger.mjs';
-import {validateJournalLinks} from '../../app/journal.mjs';
+import {validateJournalLinks,validateJournalDetails,validateJournalChanges,JOURNAL_OPTIONAL_FIELDS} from '../../app/journal.mjs';
 
 const MAX_BYTES=200000;
 const reply=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
@@ -22,7 +22,8 @@ function validateState(data){
  if(!Array.isArray(data.watchlist)||data.watchlist.length>50||!data.watchlist.every(symbol)||!unique(data.watchlist))throw Error('INVALID_WATCHLIST');
  if(!Array.isArray(data.journal)||data.journal.length>500||!unique(data.journal.map(row=>row?.id)))throw Error('INVALID_JOURNAL');
  for(const row of data.journal){
-  if(!withOptional(row,['id','symbol','createdAt','thesis','entry','stop','target1','target2','status','evaluation'],['eventIds'])||!id(row.id)||!symbol(row.symbol)||!iso(row.createdAt)||!text(row.thesis,4000)||!text(row.evaluation,4000)||!['planned','executed','reviewed'].includes(row.status)||!['entry','stop','target1','target2'].every(key=>price(row[key])))throw Error('INVALID_JOURNAL');
+  if(!withOptional(row,['id','symbol','createdAt','thesis','entry','stop','target1','target2','status','evaluation'],JOURNAL_OPTIONAL_FIELDS)||!id(row.id)||!symbol(row.symbol)||!iso(row.createdAt)||!text(row.thesis,4000)||!text(row.evaluation,4000)||!['draft','planned','executed','reviewed','cancelled'].includes(row.status)||!['entry','stop','target1','target2'].every(key=>price(row[key])))throw Error('INVALID_JOURNAL');
+  validateJournalDetails(row);
  }
  if(!Array.isArray(data.alerts)||data.alerts.length>50||!unique(data.alerts.map(row=>row?.id)))throw Error('INVALID_ALERTS');
  for(const row of data.alerts){
@@ -77,6 +78,10 @@ async function privateStateApi(request,env){
    if(!row)return error('DATABASE_ERROR',503);
    const data=validateState({...JSON.parse(row.state_json),version:row.version});return reply({data});
   }
+  const prior=await env.DB.prepare('SELECT state_json,version FROM user_state WHERE user_id=?').bind(user.id).first();
+  if(!prior)return error('DATABASE_ERROR',503);
+  if(prior.version!==next.version)return error('VERSION_CONFLICT',409);
+  try{const previous=JSON.parse(prior.state_json);const oldPlans=new Map(previous.journal.map(row=>[row.id,row]));for(const row of next.journal){const old=oldPlans.get(row.id);if(row.initialRisk!==undefined){row.riskRecordedAt=old?.initialRisk===row.initialRisk&&old?.riskCurrency===row.riskCurrency?old.riskRecordedAt:new Date().toISOString();}}validateJournalChanges(next.journal,previous.journal,previous.events)}catch(cause){return error(cause.message==='JOURNAL_PLAN_IMMUTABLE'?'JOURNAL_PLAN_IMMUTABLE':'INVALID_JOURNAL',400)}
   const saved={...next,version:next.version+1};
   const result=await env.DB.prepare("UPDATE user_state SET state_json=?,version=version+1,updated_at=datetime('now') WHERE user_id=? AND version=?").bind(JSON.stringify(saved),user.id,next.version).run();
   if(!result.meta?.changes)return error('VERSION_CONFLICT',409);

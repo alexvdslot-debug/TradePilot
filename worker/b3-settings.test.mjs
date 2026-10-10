@@ -16,7 +16,7 @@ function db(){
  },async run(){
   if(sql.startsWith('INSERT OR IGNORE INTO users')){if(!users.has(args[1]))users.set(args[1],{id:args[0]});return {meta:{changes:1}}}
   if(sql.startsWith('INSERT OR IGNORE INTO user_settings')){if(!settings.has(args[0]))settings.set(args[0],{display_name:'',locale:'nl-NL',timezone:'Europe/Amsterdam',display_currency:'EUR',risk_budget_eur:'100.00',version:1});return {meta:{changes:1}}}
-  if(sql.startsWith('UPDATE user_settings')){const row=settings.get(args[5]);if(!row||row.version!==args[6])return {meta:{changes:0}};settings.set(args[5],{display_name:args[0],locale:args[1],timezone:args[2],display_currency:args[3],risk_budget_eur:args[4],version:row.version+1});return {meta:{changes:1}}}
+  if(sql.startsWith('UPDATE user_settings')){const row=settings.get(args[5]);if(!row||row.version!==args[6])return {meta:{changes:0}};settings.set(args[5],{display_name:args[0],locale:args[1],timezone:args[2],display_currency:args[3],risk_budget_eur:args[4],preferences_json:args[7],version:row.version+1});return {meta:{changes:1}}}
   throw Error('unexpected mutation '+sql)
  }}}}
 }
@@ -46,3 +46,14 @@ test('invalid JWT signature is rejected',async()=>{
  const bad=token('A').split('.');bad[1]=b64({iss:'https://team.cloudflareaccess.com',aud:['app-aud'],sub:'B',iat:Math.floor(Date.now()/1000),exp:Math.floor(Date.now()/1000)+600});
  const r=await settingsApi(new Request('https://api.example.test/api/v1/settings',{headers:{'Cf-Access-Jwt-Assertion':bad.join('.')}}),env);assert.equal(r.status,401);
 });
+
+test('preferences persist atomically and remain isolated, invalid keys fail closed',async()=>{
+ const local={...env,DB:db()};const initial=(await (await settingsApi(req('/api/v1/settings','P'),local)).json()).data;
+ const preferences={...initial.preferences,hideAmounts:true,defaultInterval:'5min',maxPositionPercent:'10.00'};
+ assert.equal((await settingsApi(req('/api/v1/settings','P','PATCH',{version:1,preferences}),local)).status,200);
+ assert.deepEqual((await (await settingsApi(req('/api/v1/settings','P'),local)).json()).data.preferences,preferences);
+ assert.equal((await (await settingsApi(req('/api/v1/settings','Q'),local)).json()).data.preferences.hideAmounts,false);
+ assert.equal((await settingsApi(req('/api/v1/settings','P','PATCH',{version:1,preferences}),local)).status,409);
+ for(const bad of [{...preferences,owner:'Q'},{...preferences,inAppAlerts:'true'},{...preferences,maxPositionPercent:'100.01'},{...preferences,defaultInterval:'1min'}])assert.equal((await settingsApi(req('/api/v1/settings','P','PATCH',{version:2,preferences:bad}),local)).status,400);
+});
+test('configured database errors return structured 503',async()=>{const response=await settingsApi(req('/api/v1/settings','P'),{...env,DB:{prepare(){throw Error('secret')}}});assert.equal(response.status,503);assert.equal((await response.json()).error.code,'DATABASE_ERROR')});

@@ -36,8 +36,8 @@ test('radar comparison fills workspace and supports descriptive filter sort rese
  const widths=await page.evaluate(()=>({results:document.getElementById('scan-results').getBoundingClientRect().width,watch:document.getElementById('watch-form').closest('section').getBoundingClientRect().width}));expect(widths.results).toBeGreaterThan(widths.watch*1.5);
  await page.locator('#scan-sort').selectOption('ticker');await expect(page.locator('#scan-table tbody tr').first()).toContainText('AAPL');
  await page.locator('#scan-filter').fill('NVDA');await expect(page.locator('#scan-table tbody tr')).toHaveCount(1);await expect(page.locator('#scan-results')).toContainText('geen bevestigde actuele ranking');
- await page.locator('#scan-filter').fill('NO-SUCH-TICKER');await expect(page.locator('#scan-empty')).toBeVisible();await page.locator('#scan-reset').click();await expect(page.locator('#scan-table tbody tr')).toHaveCount(7);await expect(page.locator('#scan-sort')).toHaveValue('input');await expect(page.locator('#scan-filter')).toBeFocused();
- await page.locator('#scan-table [data-open-analyzer=NVDA]').click();await expect(page.locator('#market-form input[name=symbol]')).toHaveValue('NVDA');await expect(page).toHaveURL(/\/app\/analyzer(?:\?|$)/);
+ await page.locator('#scan-filter').fill('NO-SUCH-TICKER');await expect(page.locator('#scan-empty')).toBeVisible();await page.locator('#scan-reset').click();await expect(page.locator('#scan-table tbody tr')).toHaveCount(7);await expect(page.locator('#scan-sort')).toHaveValue('quality');await expect(page.locator('#scan-filter')).toBeFocused();
+ await page.locator('#scan-table [data-select-candidate=NVDA]').click();await page.locator('#scan-details [data-open-analyzer=NVDA]').click();await expect(page.locator('#market-form input[name=symbol]')).toHaveValue('NVDA');await expect(page).toHaveURL(/\/app\/analyzer(?:\?|$)/);
 });
 
 test('validated manual scenario prefills Journal but persists only after explicit plan save',async({page})=>{
@@ -50,7 +50,7 @@ test('validated manual scenario prefills Journal but persists only after explici
 
 test('journal Dutch status labels preserve values and ticker opens Analyzer',async({page})=>{
  const state=initial();state.journal=[{id:'j1',symbol:'OPEN',createdAt:'2026-10-01T09:00:00Z',thesis:'Fixture onderbouwing',entry:'3',stop:'2.8',target1:'3.5',target2:'4',status:'reviewed',evaluation:''}];
- await setup(page,state);await ready(page,'journal');await expect(page.locator('[data-journal-status=j1]')).toHaveValue('reviewed');await expect(page.locator('[data-journal-status=j1] option:checked')).toHaveText('Geëvalueerd');await expect(page.locator('.journal-list .badge')).toHaveText('Geëvalueerd');await page.locator('[data-open-analyzer=OPEN]').click();await expect(page.locator('#market-form input[name=symbol]')).toHaveValue('OPEN');
+ await setup(page,state);await ready(page,'journal');await expect(page.locator('[data-journal-status=j1]')).toHaveValue('reviewed');await expect(page.locator('[data-journal-status=j1] option:checked')).toHaveText('Geëvalueerd');await expect(page.locator('.journal-list .badge')).toHaveText('Gepland');await page.locator('[data-open-analyzer=OPEN]').click();await expect(page.locator('#market-form input[name=symbol]')).toHaveValue('OPEN');
 });
 
 test('alert edit pause rearm and delete save explicit owner state',async({page})=>{
@@ -81,14 +81,14 @@ async function quotaScan(page,{retrievedAt='2026-10-10T12:00:00Z'}={}){
 }
 
 test('full eight-call scan opens matching 15-minute Analyzer without a ninth provider request',async({page})=>{
- const requests=await quotaScan(page);await page.locator('#scan-table [data-open-analyzer=NVDA]').click();await expect(page.locator('#market-form [name=interval]')).toHaveValue('15min');await expect(page.locator('.price-chart')).toBeVisible();await expect(page.locator('#market-result .badge')).toHaveText('15min');await expect(page.locator('#market-result')).toContainText('Wachten');expect(requests).toHaveLength(8);
+ const requests=await quotaScan(page);await page.locator('#scan-table [data-select-candidate=NVDA]').click();await page.locator('#scan-details [data-open-analyzer=NVDA]').click();await expect(page.locator('#market-form [name=interval]')).toHaveValue('15min');await expect(page.locator('.price-chart')).toBeVisible();await expect(page.locator('#market-result .badge')).toHaveText('15min');await expect(page.locator('#market-result')).toContainText('Wachten');expect(requests).toHaveLength(8);
  await page.locator('#market-form [name=interval]').selectOption('5min');await expect(page.locator('#market-result')).toContainText('Aanvraaglimiet van de databron bereikt');expect(requests).toHaveLength(9);expect(requests[8]).toEqual({symbol:'NVDA',interval:'5min'});await expect(page.locator('#market-retry')).toBeVisible();await expect(page.locator('#market-result')).toContainText('minutenlimiet of daglimiet');await page.locator('#market-retry').click();await expect.poll(()=>requests.length).toBe(10);
 });
 
 test('scan cache older than sixty seconds cannot bypass a provider fetch',async({page})=>{
- const requests=await quotaScan(page);await page.clock.setFixedTime(new Date('2026-10-10T12:01:01Z'));await page.locator('#scan-table [data-open-analyzer=NVDA]').click();await expect(page.locator('#market-result')).toContainText('Aanvraaglimiet van de databron bereikt');expect(requests).toHaveLength(9);await expect(page.locator('.price-chart')).toHaveCount(0);
+ const requests=await quotaScan(page);await page.clock.setFixedTime(new Date('2026-10-10T12:01:01Z'));await page.locator('#scan-table [data-select-candidate=NVDA]').click();await page.locator('#scan-details [data-open-analyzer=NVDA]').click();await expect(page.locator('#market-result')).toContainText('Aanvraaglimiet van de databron bereikt');expect(requests).toHaveLength(9);await expect(page.locator('.price-chart')).toHaveCount(0);
 });
 
 test('scan cache with an invalid retrieval timestamp is never reused',async({page})=>{
- const requests=await quotaScan(page,{retrievedAt:'2026-02-30T12:00:00Z'});await page.locator('#scan-table [data-open-analyzer=NVDA]').click();await expect(page.locator('#market-result')).toContainText('Aanvraaglimiet van de databron bereikt');expect(requests).toHaveLength(9);await expect(page.locator('.price-chart')).toHaveCount(0);
+ const requests=await quotaScan(page,{retrievedAt:'2026-02-30T12:00:00Z'});await page.locator('#scan-table [data-select-candidate=NVDA]').click();await page.locator('#scan-details [data-open-analyzer=NVDA]').click();await expect(page.locator('#market-result')).toContainText('Aanvraaglimiet van de databron bereikt');expect(requests).toHaveLength(9);await expect(page.locator('.price-chart')).toHaveCount(0);
 });

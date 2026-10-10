@@ -94,3 +94,15 @@ test('alert read acknowledgement and trigger provenance validate without losing 
  assert.deepEqual((await (await privateStateApi(request('A'),env)).json()).data.alerts,[legacy,triggered]);
  for(const invalid of [{...triggered,readAt:'bad'},{...triggered,triggerAsOf:'2026-10-01T14:40:00Z'},{...triggered,triggerSource:'<script>'},{...legacy,readAt:'2026-10-01T14:36:00Z'},{...triggered,triggerPrice:undefined}])assert.equal((await privateStateApi(request('A',{...initial(),version:2,alerts:[invalid]}),env)).status,400);
 });
+
+test('journal risk timestamp is server-controlled and executed originals cannot be rewritten',async()=>{
+ const env=environment();await privateStateApi(request(),env);
+ const row={id:'risk-plan',symbol:'OPEN',createdAt:'2026-10-01T12:00:00Z',thesis:'Original',entry:'3',stop:'2',target1:'4',target2:'5',status:'planned',evaluation:'',initialRisk:'2',riskCurrency:'USD',riskRecordedAt:'2020-01-01T00:00:00Z'};
+ const response=await privateStateApi(request('A',{...initial(),journal:[row]}),env);assert.equal(response.status,200);const saved=(await response.json()).data;
+ assert.notEqual(saved.journal[0].riskRecordedAt,row.riskRecordedAt);assert.ok(Date.now()-Date.parse(saved.journal[0].riskRecordedAt)<10000);
+ const activeResponse=await privateStateApi(request('A',{...saved,journal:[{...saved.journal[0],status:'executed'}]}),env);assert.equal(activeResponse.status,200);const active=(await activeResponse.json()).data;
+ for(const change of [{thesis:'Rewritten'},{status:'planned'},{initialRisk:'3'}])assert.equal((await privateStateApi(request('A',{...active,journal:[{...active.journal[0],...change}]}),env)).status,400);
+ const review=await privateStateApi(request('A',{...active,journal:[{...active.journal[0],evaluation:'Learned'}]}),env);assert.equal(review.status,200);
+ const reviewed=(await review.json()).data;assert.equal((await privateStateApi(request('A',{...reviewed,journal:[]}),env)).status,400);
+ assert.deepEqual((await (await privateStateApi(request('B'),env)).json()).data.journal,[]);
+});

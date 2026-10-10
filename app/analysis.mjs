@@ -82,6 +82,16 @@ export function analyzeCandles(sourceFeed,{benchmark,fees=0,slippage=0,now=Date.
  if(feed.displayRights!=='verified')reasons.push('DISPLAY_RIGHTS_UNVERIFIED');
  const current=feed.currentMarketStatus;
  if(!current||current.state!=='open'||current.basis!=='provider_market_state'||current.exchange!==feed.exchange||!Number.isFinite(Date.parse(current.asOf))||now-Date.parse(current.asOf)>90000||Date.parse(current.asOf)>now+60000)reasons.push('CURRENT_MARKET_STATUS_UNVERIFIED');
+ const fresh=(e,maxAge)=>e?.verified===true&&Number.isFinite(Date.parse(e.asOf))&&now-Date.parse(e.asOf)>=0&&now-Date.parse(e.asOf)<=maxAge;
+ const quote=feed.bidAsk;
+ if(!fresh(quote,90000)||!quote.provider||![quote.bid,quote.ask].every(Number.isFinite)||quote.bid<=0||quote.ask<quote.bid)reasons.push('BID_ASK_UNVERIFIED');
+ const risk=feed.marketRisk;
+ if(!fresh(risk,90000)||risk.halted!==false||risk.corporateActionsChecked!==true)reasons.push(risk?.verified===true&&risk.halted===true?'SYMBOL_HALTED':'MARKET_RISK_UNVERIFIED');
+ const trueVolume=feed.timeOfDayRvol;
+ const volumeVerified=fresh(trueVolume,minutes*60000+90000)&&trueVolume.basis==='cumulative_same_session_time'&&trueVolume.session==='regular'&&trueVolume.referenceSessions>=5&&Number.isFinite(trueVolume.value)&&trueVolume.value>=0&&Date.parse(trueVolume.barTime)===Date.parse(latest.time);
+ if(!volumeVerified)reasons.push('TIME_OF_DAY_RVOL_UNAVAILABLE');
+ const check=feed.sourceCheck;
+ if(!fresh(check,minutes*60000+90000)||check.provider===feed.provider||!check.provider||check.currency!==feed.currency||check.comparisonBasis!=='same_completed_interval'||Date.parse(check.barTime)!==Date.parse(latest.time)||!Number.isFinite(check.price)||check.price<=0||check.conflict!==false)reasons.push(check?.verified===true&&check.conflict===true?'SOURCE_CONFLICT':'SECONDARY_SOURCE_UNVERIFIED');
  if(candles.length<35)reasons.push('INSUFFICIENT_MACD_HISTORY');
  const gaps=candles.some((c,i)=>i&&sessionDate(c.time)===sessionDate(candles[i-1].time)&&Date.parse(c.time)-Date.parse(candles[i-1].time)!==(minutes||5)*60000);
  if(gaps)reasons.push('INCOMPLETE_INTERVALS');
@@ -103,7 +113,7 @@ export function analyzeCandles(sourceFeed,{benchmark,fees=0,slippage=0,now=Date.
  const target1=resistance>entry?resistance:entry+2*atr,target2=Math.max(resistance+2*atr,target1+atr);
  const indicativeLevels={support,resistance,volatility:atr,entry,stop,target1,target2};
  const signals={breakout:latest.c>resistance,reversal:latest.c>candles.at(-2).h&&candles.at(-2).c<candles.at(-3).c};
- const setup=trend==='up'&&values.macd?.histogram>0&&values.rsi<75&&entry>values.vwap&&values.relativeVolume>=1&&stop<entry&&entry<target1;
+ const setup=trend==='up'&&values.macd?.histogram>0&&values.rsi<75&&entry>values.vwap&&volumeVerified&&trueVolume.value>=1&&stop<entry&&entry<target1;
  if(!setup)reasons.push('NO_CONFIRMED_LONG_SETUP');
  let scenario=null,score=null,hypotheticalScenario=null;
  if(candles.length>=35&&!gaps&&atr>0&&stop<entry&&entry<target1&&target1<target2){

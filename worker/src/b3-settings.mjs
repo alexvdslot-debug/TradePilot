@@ -31,8 +31,9 @@ async function verifiedIdentity(request,env){
   return ok?issuer+'|'+payload.sub:null;
  }catch{return null}
 }
-const defaults={display_name:'',locale:'nl-NL',timezone:'Europe/Amsterdam',display_currency:'EUR',risk_budget_eur:'100.00',version:1};
-function publicSettings(row){return {display_name:row.display_name,locale:row.locale,timezone:row.timezone,display_currency:row.display_currency,risk_budget_eur:row.risk_budget_eur,version:row.version}}
+export const defaultPreferences=Object.freeze({showUSD:true,defaultInterval:'15min',inAppAlerts:true,maxPositionPercent:'25.00',hideAmounts:false});
+function validPreferences(value){return value&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).length===5&&Object.keys(defaultPreferences).every(key=>Object.hasOwn(value,key))&&['showUSD','inAppAlerts','hideAmounts'].every(key=>typeof value[key]==='boolean')&&['5min','15min'].includes(value.defaultInterval)&&typeof value.maxPositionPercent==='string'&&/^(?:0|[1-9]\d?|100)\.\d{2}$/.test(value.maxPositionPercent)&&Number(value.maxPositionPercent)>0&&Number(value.maxPositionPercent)<=100;}
+function publicSettings(row){if(!row)throw Error('MISSING_SETTINGS');const preferences=row.preferences??(row.preferences_json?JSON.parse(row.preferences_json):{...defaultPreferences});if(!validPreferences(preferences))throw Error('CORRUPT_SETTINGS');return {display_name:row.display_name,locale:row.locale,timezone:row.timezone,display_currency:row.display_currency,risk_budget_eur:row.risk_budget_eur,version:row.version,preferences}}
 async function settingsApi(request,env){
  const url=new URL(request.url);
  if(!url.pathname.startsWith('/api/v1/'))return null;
@@ -46,6 +47,7 @@ async function settingsApi(request,env){
  if(request.method==='PATCH'&&(!origin||origin!==expected||request.headers.get('x-tradepilot-csrf')!=='1'))return error('CSRF_REJECTED',403);
  const subject=await verifiedIdentity(request,env);
  if(!subject)return error('UNAUTHENTICATED',401);
+ try{
  // Never accept user_id from request; key every query by server-verified subject.
  let user=await env.DB.prepare('SELECT id FROM users WHERE auth_subject = ?').bind(subject).first();
  if(!user){
@@ -55,7 +57,7 @@ async function settingsApi(request,env){
  }
  if(!user)return error('DATABASE_ERROR',503);
  await env.DB.prepare('INSERT OR IGNORE INTO user_settings (user_id) VALUES (?)').bind(user.id).run();
- const read=()=>env.DB.prepare('SELECT display_name,locale,timezone,display_currency,risk_budget_eur,version FROM user_settings WHERE user_id=?').bind(user.id).first();
+ const read=()=>env.DB.prepare('SELECT display_name,locale,timezone,display_currency,risk_budget_eur,version,preferences_json FROM user_settings WHERE user_id=?').bind(user.id).first();
  if(request.method==='GET'){
   const settings=publicSettings(await read());
   return reply({data:url.pathname.endsWith('/session')?{authenticated:true,settings}:settings});
@@ -64,17 +66,19 @@ async function settingsApi(request,env){
  try{if(Number(request.headers.get('content-length')||0)>4096)return error('PAYLOAD_TOO_LARGE',413);const raw=await request.text();if(raw.length>4096)return error('PAYLOAD_TOO_LARGE',413);data=JSON.parse(raw)}catch{return error('INVALID_JSON',400)}
  if(!data||typeof data!=='object'||Array.isArray(data))return error('INVALID_INPUT',400);
  const keys=Object.keys(data);
- if(keys.some(k=>!['display_name','locale','timezone','display_currency','risk_budget_eur','version'].includes(k)))return error('INVALID_INPUT',400);
+ if(keys.some(k=>!['display_name','locale','timezone','display_currency','risk_budget_eur','version','preferences'].includes(k)))return error('INVALID_INPUT',400);
  if(!Number.isSafeInteger(data.version)||data.version<1)return error('INVALID_VERSION',400);
  if('display_name'in data&&(typeof data.display_name!=='string'||data.display_name.length>80||/[<>\u0000-\u001f]/.test(data.display_name)))return error('INVALID_NAME',400);
  if('locale'in data&&data.locale!=='nl-NL'&&data.locale!=='en-US')return error('INVALID_LOCALE',400);
  if('timezone'in data&&(typeof data.timezone!=='string'||data.timezone.length>64||!tzValid(data.timezone)))return error('INVALID_TIMEZONE',400);
  if('display_currency'in data&&!allowedCurrencies.has(data.display_currency))return error('INVALID_CURRENCY',400);
  if('risk_budget_eur'in data&&(typeof data.risk_budget_eur!=='string'||! /^(?:0|[1-9]\d{0,7})\.\d{2}$/.test(data.risk_budget_eur)))return error('INVALID_RISK_BUDGET',400);
+ if('preferences'in data&&!validPreferences(data.preferences))return error('INVALID_PREFERENCES',400);
  const current=await read();if(!current)return error('DATABASE_ERROR',503);
- const next={...current,...data};
- const result=await env.DB.prepare('UPDATE user_settings SET display_name=?,locale=?,timezone=?,display_currency=?,risk_budget_eur=?,version=version+1,updated_at=datetime(\'now\') WHERE user_id=? AND version=?').bind(next.display_name,next.locale,next.timezone,next.display_currency,next.risk_budget_eur,user.id,data.version).run();
+ const next={...publicSettings(current),...data};
+ const result=await env.DB.prepare('UPDATE user_settings SET display_name=?1,locale=?2,timezone=?3,display_currency=?4,risk_budget_eur=?5,preferences_json=?8,version=version+1,updated_at=datetime(\'now\') WHERE user_id=?6 AND version=?7').bind(next.display_name,next.locale,next.timezone,next.display_currency,next.risk_budget_eur,user.id,data.version,JSON.stringify(next.preferences)).run();
  if(!result.meta?.changes)return error('VERSION_CONFLICT',409);
  return reply({data:publicSettings({...next,version:data.version+1})});
+ }catch{return error('DATABASE_ERROR',503)}
 }
 export {settingsApi,verifiedIdentity};
