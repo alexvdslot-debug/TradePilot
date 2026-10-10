@@ -30,3 +30,21 @@ Responsive first pass: all30 route/width combinations passed bothengines. Chromi
 
 ## Additive preferences migration
 Migration0005_ui_preferences.sql applied10October2026 after a PRAGMA guard confirmed the column absent. New preferences_json is JSON-validated with safe defaults; no account/ledger record was deleted or rewritten. Counts before/after: users1, settings1, private_records1. D1 recovery bookmark captured before this work:00000014-00000000-00005100-a1cc273f6a61bb29f1d77da722d4fc9d. Existing Worker remains deployed until all new code checks pass. Production migration success does not by itself prove the new UI is deployed.
+
+## Integration and live-control lessons
+
+The full initial regression run caught outdated selectors after adding contextual actions and candidate-detail drilldown. Tests now exercise the actual two-step Radar→candidate→Analyzer flow and still prove eight-call cache reuse, expired-cache fetch and invalid retrieval rejection. A no-fill reviewed plan does not imply a completed execution.
+
+A native fragment link does not reliably transfer focus in WebKit. The skip-link activation now explicitly focuses the main region. Chromium verifies initial Tab discovery; WebKit verifies focusability and keyboard activation separately because macOS link tabbing depends on platform keyboard preferences.
+
+A persistent DOM node outside rerendered content needs its original keyed translation restored on every language change. Live EN→NL checking discovered the skip link retaining English; a dedicated roundtrip regression covers it. Translation placeholders must receive their count before interpolation; the live empty-alert counter discovered this and its browser assertion now proves an actual numeric zero.
+
+Concurrent remote icon/style/mobile-test improvements were compared and retained when publishing; branch updates used an exact-head lease. Two newly added remote workflows were retained in the base tree. Header targets remain44×44px at320px.
+
+## Visual correction — 10 October, user feedback
+
+The user rejected resemblance to the mockups. Visual conformance remains open. The original collage `a_clean_high_resolution_app_ui_mockup_collage_on.png` is referenced by DESIGN_BASELINE_V1 but absent from available repository/attachments; a source request is pending. Functional success must not be described as design acceptance.
+
+The first correction compacts Dashboard greeting, market status and refresh; preserves source evidence in disclosures; moves account preferences below the overview; aligns KPI cards and removes decorative live-looking dots. Full timestamps are not presented as current quotes. Risk precedes positions only in the Dashboard overview. All four KPI cards are tested above the bottom navigation at375×812 in Chromium and WebKit. The preliminary correction passed175unit and180browser checks. The review in VISUAL_CORRECTION_REVIEW.md identifies further composition changes for Portfolio, Analyzer and Journal; these remain pending original-reference comparison.
+
+Lesson: sibling margins and long explanation blocks can defeat a valid grid and the intended five-second overview. Scope ordering rules to their intended section rather than every reused column grid. Test functionality and visual hierarchy separately.

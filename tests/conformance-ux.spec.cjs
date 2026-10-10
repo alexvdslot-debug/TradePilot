@@ -15,6 +15,7 @@ for(const width of [320,375,768,1024,1440])test(`all six screens remain accessib
   await page.goto(root+route);await expect(page.locator('.splash')).toBeHidden();await expect(page.locator('main h1')).toBeVisible();
   await expect(page.locator('main')).toHaveAttribute('tabindex','-1');
   const dimensions=await page.evaluate(()=>({client:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth,actions:[...document.querySelectorAll('.header-actions button')].map(e=>({width:e.getBoundingClientRect().width,height:e.getBoundingClientRect().height}))}));
+  if(route==='dashboard'&&width>=375){const tops=await page.locator('.dashboard-kpis>.card').evaluateAll(cards=>cards.slice(0,2).map(card=>card.getBoundingClientRect().top));expect(Math.abs(tops[0]-tops[1])).toBeLessThan(1);await expect(page.locator('#dashboard-refresh')).toHaveClass(/secondary/);}
   expect(dimensions.scroll,route).toBeLessThanOrEqual(dimensions.client+1);expect(dimensions.actions.every(x=>x.width>=44&&x.height>=44),route).toBe(true);
   if(width<=375)await expect(page.locator('.bottom a')).toHaveCount(5);
   if(info.project.name==='chromium')await page.screenshot({path:info.outputPath(`${route}-${width}.png`),fullPage:true});
@@ -37,3 +38,5 @@ test('saved English locale applies to every screen and preserves user content',a
  }
 });
 test('English Journal validation uses translated feedback',async({page})=>{await fixtures(page,'en-US');await page.goto(root+'journal');await expect(page.locator('.splash')).toBeHidden();const form=page.locator('#journal-form');for(const [name,value]of Object.entries({symbol:'OPEN',entry:'1',stop:'2',target1:'3',target2:'4',thesis:'Personal thesis'}))await form.locator('[name='+name+']').fill(value);await form.getByRole('button',{name:'Save plan',exact:true}).click();await expect(page.locator('#feature-message')).toContainText('Not saved: Use stop < entry < target 1 < target 2')});
+
+test('mobile overview shows all four capital cards before bottom navigation',async({page})=>{await page.setViewportSize({width:375,height:812});await fixtures(page);await page.goto(root+'dashboard');await expect(page.locator('.splash')).toBeHidden();const bounds=await page.evaluate(()=>({bottom:Math.max(...[...document.querySelectorAll('.dashboard-kpis>.card')].map(e=>e.getBoundingClientRect().bottom)),navigation:document.querySelector('.bottom').getBoundingClientRect().top}));expect(bounds.bottom).toBeLessThan(bounds.navigation);await expect(page.locator('#dashboard-market-status')).toContainText('Actuele marktgegevens niet beschikbaar');await page.locator('.dashboard-account summary').click();await expect(page.locator('#account-summary')).toContainText('Europe/Amsterdam');});
