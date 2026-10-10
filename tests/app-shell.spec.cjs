@@ -173,3 +173,21 @@ test('B3 dashboard uses neutral greeting when profile is unavailable',async({pag
  await expect(page.locator('.splash')).toBeHidden({timeout:5000});
  await expect(page.locator('#dashboard-greeting')).not.toContainText('Alexander');
 });
+
+test('B3 cold start hydrates all persisted preferences, not only name',async({page})=>{
+ await page.route('https://tradepilot-pro-api.alexvdslot.workers.dev/api/v1/settings',route=>route.fulfill({json:{data:{display_name:'Alexander',locale:'en-US',timezone:'America/New_York',display_currency:'USD',risk_budget_eur:'250.00',version:3}}}));
+ await page.goto('http://127.0.0.1:8765/app/index.html');
+ await expect(page.locator('.splash')).toBeHidden({timeout:5000});
+ await expect(page.locator('#dashboard-greeting')).toContainText('Alexander');
+ await expect(page.locator('#account-summary')).toContainText('English');
+ await expect(page.locator('#account-summary')).toContainText('America/New_York');
+ await expect(page.locator('#account-summary')).toContainText('USD');
+ await expect(page.locator('#account-summary')).toContainText('250.00');
+ await expect(page.locator('#account-summary')).not.toContainText('Accountvoorkeuren niet geladen');
+});
+test('B3 profile name cannot inject markup in greeting',async({page})=>{
+ await page.route('https://tradepilot-pro-api.alexvdslot.workers.dev/api/v1/settings',route=>route.fulfill({json:{data:{display_name:'<img src=x onerror=alert(1)>',locale:'nl-NL',timezone:'Europe/Amsterdam',display_currency:'EUR',risk_budget_eur:'100.00',version:2}}}));
+ await page.goto('http://127.0.0.1:8765/app/index.html');
+ await expect(page.locator('#dashboard-greeting')).toContainText('<img');
+ await expect(page.locator('#dashboard-greeting img')).toHaveCount(0);
+});
