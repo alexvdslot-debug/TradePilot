@@ -18,3 +18,5 @@ No build/server was started, per the coordinating agent's ownership. Root perfor
 ## Lessons
 
 Price geometry is evidence, so moving lines to make labels fit would misrepresent the data. Move annotation content out of the plotting area instead. SVG text anchored at a final candle's center can extend into a unit/timezone suffix; fixed inward endpoint anchors prevent this regardless of candle count. Source unit tests do not replace integrated pixel review.
+
+Browser test lesson: horizontal SVG groups containing only a line have zero-height bounding boxes; Playwright marks the group hidden even when its stroke is drawn. Assert plot line presence, exact geometry in unit tests, and visible HTML legend instead of visibility of the zero-height group.
