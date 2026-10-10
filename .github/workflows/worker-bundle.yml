@@ -24,7 +24,9 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - name: Confirm frontend and embedded Worker assets match
+      - name: Generate Worker-embedded frontend from current source
+        run: npm run build
+      - name: Confirm generated frontend and syntax
         run: npm run check
       - name: Install Wrangler for offline bundling
         run: npm install --no-save wrangler@4
