@@ -1,0 +1,15 @@
+{
+  "name": "tradepilot-pro",
+  "private": true,
+  "version": "0.4.0",
+  "scripts": {
+    "build": "node scripts/build-assets.mjs",
+    "check": "node scripts/build-assets.mjs --check && node --check app/main.js && node --check app/features.mjs",
+    "test": "node --test pro/*.test.mjs worker/*.test.mjs tests/*.test.cjs tests/*.test.mjs",
+    "test:browser": "playwright test --config=app/playwright.config.cjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.58.2"
+  },
+  "type": "module"
+}

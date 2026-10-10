@@ -1,4 +1,5 @@
 const {test,expect}=require('@playwright/test');
+test.beforeEach(async({page})=>{await page.route('http://127.0.0.1:8765/api/v1/**',route=>route.fulfill({status:503,json:{error:{code:'SERVICE_NOT_CONFIGURED'}}}));});
 test('splash animates bars, exits and navigation works',async({page})=>{
  await page.goto('http://127.0.0.1:8765/app/index.html');
  await expect(page.locator('.splash-bar')).toHaveCount(3);
@@ -121,7 +122,7 @@ test('small screen does not overflow',async({page})=>{await page.setViewportSize
 
 test('B3 account settings load, save and survive reload with verified API contract',async({page})=>{
  const saved={display_name:'',locale:'nl-NL',timezone:'Europe/Amsterdam',display_currency:'EUR',risk_budget_eur:'100.00',version:1};
- await page.route('https://tradepilot-pro-api.alexvdslot.workers.dev/api/v1/**',async route=>{
+ await page.route('http://127.0.0.1:8765/api/v1/**',async route=>{
   const request=route.request(),url=new URL(request.url());
   if(url.pathname.endsWith('/session'))return route.fulfill({json:{data:{authenticated:true,settings:saved}}});
   if(request.method()==='PATCH'){
@@ -147,7 +148,7 @@ test('B3 account settings load, save and survive reload with verified API contra
  await expect(page.locator('#account-status')).toContainText('versie 2');
 });
 test('B3 settings fail closed when session is unavailable',async({page})=>{
- await page.route('https://tradepilot-pro-api.alexvdslot.workers.dev/api/v1/**',route=>route.fulfill({status:401,json:{error:{code:'UNAUTHENTICATED'}}}));
+ await page.route('http://127.0.0.1:8765/api/v1/**',route=>route.fulfill({status:401,json:{error:{code:'UNAUTHENTICATED'}}}));
  await page.goto('http://127.0.0.1:8765/app/index.html');
  await expect(page.locator('.splash')).toBeHidden({timeout:5000});
  await page.getByRole('button',{name:'Instellingen'}).click();
@@ -158,7 +159,7 @@ test('B3 settings fail closed when session is unavailable',async({page})=>{
 
 test('B3 dashboard hydrates persisted display name without visiting settings',async({page})=>{
  let profileReads=0;
- await page.route('https://tradepilot-pro-api.alexvdslot.workers.dev/api/v1/settings',route=>{
+ await page.route('http://127.0.0.1:8765/api/v1/settings',route=>{
   profileReads++;
   return route.fulfill({json:{data:{display_name:'Alexander',locale:'nl-NL',timezone:'Europe/Amsterdam',display_currency:'EUR',risk_budget_eur:'100.00',version:2}}});
  });
@@ -168,14 +169,14 @@ test('B3 dashboard hydrates persisted display name without visiting settings',as
  expect(profileReads).toBeGreaterThan(0);
 });
 test('B3 dashboard uses neutral greeting when profile is unavailable',async({page})=>{
- await page.route('https://tradepilot-pro-api.alexvdslot.workers.dev/api/v1/settings',route=>route.fulfill({status:401,json:{error:{code:'UNAUTHENTICATED'}}}));
+ await page.route('http://127.0.0.1:8765/api/v1/settings',route=>route.fulfill({status:401,json:{error:{code:'UNAUTHENTICATED'}}}));
  await page.goto('http://127.0.0.1:8765/app/index.html');
  await expect(page.locator('.splash')).toBeHidden({timeout:5000});
  await expect(page.locator('#dashboard-greeting')).not.toContainText('Alexander');
 });
 
 test('B3 cold start hydrates all persisted preferences, not only name',async({page})=>{
- await page.route('https://tradepilot-pro-api.alexvdslot.workers.dev/api/v1/settings',route=>route.fulfill({json:{data:{display_name:'Alexander',locale:'en-US',timezone:'America/New_York',display_currency:'USD',risk_budget_eur:'250.00',version:3}}}));
+ await page.route('http://127.0.0.1:8765/api/v1/settings',route=>route.fulfill({json:{data:{display_name:'Alexander',locale:'en-US',timezone:'America/New_York',display_currency:'USD',risk_budget_eur:'250.00',version:3}}}));
  await page.goto('http://127.0.0.1:8765/app/index.html');
  await expect(page.locator('.splash')).toBeHidden({timeout:5000});
  await expect(page.locator('#dashboard-greeting')).toContainText('Alexander');
@@ -186,7 +187,7 @@ test('B3 cold start hydrates all persisted preferences, not only name',async({pa
  await expect(page.locator('#account-summary')).not.toContainText('Accountvoorkeuren niet geladen');
 });
 test('B3 profile name cannot inject markup in greeting',async({page})=>{
- await page.route('https://tradepilot-pro-api.alexvdslot.workers.dev/api/v1/settings',route=>route.fulfill({json:{data:{display_name:'<img src=x onerror=alert(1)>',locale:'nl-NL',timezone:'Europe/Amsterdam',display_currency:'EUR',risk_budget_eur:'100.00',version:2}}}));
+ await page.route('http://127.0.0.1:8765/api/v1/settings',route=>route.fulfill({json:{data:{display_name:'<img src=x onerror=alert(1)>',locale:'nl-NL',timezone:'Europe/Amsterdam',display_currency:'EUR',risk_budget_eur:'100.00',version:2}}}));
  await page.goto('http://127.0.0.1:8765/app/index.html');
  await expect(page.locator('#dashboard-greeting')).toContainText('<img');
  await expect(page.locator('#dashboard-greeting img')).toHaveCount(0);
@@ -205,7 +206,7 @@ test('B3 stale startup profile cannot overwrite a newer saved account',async({pa
  let firstRequest;
  let count=0;
  const saved={display_name:'Alexander',locale:'nl-NL',timezone:'Europe/Amsterdam',display_currency:'EUR',risk_budget_eur:'100.00',version:2};
- await page.route('https://tradepilot-pro-api.alexvdslot.workers.dev/api/v1/**',async route=>{
+ await page.route('http://127.0.0.1:8765/api/v1/**',async route=>{
   const request=route.request();
   if(request.url().endsWith('/session'))return route.fulfill({json:{data:{authenticated:true,settings:saved}}});
   if(request.method()==='PATCH'){

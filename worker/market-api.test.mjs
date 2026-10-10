@@ -1,0 +1,23 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {generateKeyPairSync,createSign,webcrypto} from 'node:crypto';
+import {marketApi,normalizeCandles} from './src/market-api.mjs';
+if(!globalThis.crypto)globalThis.crypto=webcrypto;
+const {privateKey,publicKey}=generateKeyPairSync('rsa',{modulusLength:2048});
+const jwk=publicKey.export({format:'jwk'});jwk.kid='market-key';jwk.alg='RS256';
+const b64=x=>Buffer.from(JSON.stringify(x)).toString('base64url');
+function token(){const h=b64({alg:'RS256',kid:'market-key'}),p=b64({iss:'https://team.cloudflareaccess.com',aud:['app'],sub:'market-owner',iat:Math.floor(Date.now()/1000),exp:Math.floor(Date.now()/1000)+600});const s=createSign('RSA-SHA256');s.update(h+'.'+p);s.end();return h+'.'+p+'.'+s.sign(privateKey).toString('base64url');}
+const env={ACCESS_TEAM_DOMAIN:'team.cloudflareaccess.com',ACCESS_AUD:'app',TWELVE_DATA_API_KEY:'unit-test-secret'};
+const req=(path,auth=true)=>new Request('https://test.example/api/v1/market/'+path,{headers:auth?{'Cf-Access-Jwt-Assertion':token()}: {}});
+const original=globalThis.fetch;
+let calls=0, mode='ok';
+const candlePayload=()=>({meta:{symbol:'AAPL',interval:'5min',exchange:'NASDAQ',currency:'USD',type:'Common Stock',exchange_timezone:'America/New_York'},values:[{datetime:'2026-10-09 14:00:00',open:'10',high:'11',low:'9',close:'10.5',volume:'100'}]});
+test.before(()=>{globalThis.fetch=async url=>{if(String(url).includes('/certs'))return new Response(JSON.stringify({keys:[jwk]}));calls++;if(mode==='quota')return new Response('{}',{status:429});if(mode==='bad')return new Response('{bad');if(String(url).includes('symbol_search'))return new Response(JSON.stringify({data:[{symbol:'AAPL',instrument_name:'Apple',exchange:'NASDAQ',currency:'USD',instrument_type:'Common Stock',country:'United States'},{symbol:'AIR',instrument_name:'Airbus',exchange:'Paris',currency:'EUR',instrument_type:'Common Stock',country:'France'}]}));assert.equal(new URL(url).searchParams.get('timezone'),'UTC');return new Response(JSON.stringify(candlePayload()));};});
+test.after(()=>{globalThis.fetch=original;});
+test('auth missing and configuration fail closed; no browser bearer trust',async()=>{assert.equal((await marketApi(req('search?q=A',false),env)).status,401);assert.equal((await marketApi(req('search?q=A'),{})).status,503);assert.equal((await marketApi(req('search?q=A'),{...env,TWELVE_DATA_API_KEY:''})).status,503);});
+test('search filters non US equities and caches provider calls',async()=>{const a=await marketApi(req('search?q=apple'),env);assert.equal(a.status,200);assert.deepEqual((await a.json()).data,[{symbol:'AAPL',name:'Apple',exchange:'NASDAQ',currency:'USD'}]);const count=calls;await marketApi(req('search?q=apple'),env);assert.equal(calls,count);});
+test('invalid input cannot reach provider',async()=>{const count=calls;assert.equal((await marketApi(req('candles?symbol=AAPL&interval=1day'),env)).status,400);assert.equal((await marketApi(req('search?q=%3Cscript%3E'),env)).status,400);assert.equal(calls,count);});
+test('candles retain honest unverified session and delay',async()=>{const res=await marketApi(req('candles?symbol=AAPL&interval=5min'),env);assert.equal(res.status,200);const {data}=await res.json();assert.equal(data.marketSession,'unverified');assert.equal(data.delay,'unverified');assert.equal(data.candles[0].time,'2026-10-09T14:00:00Z');});
+test('normalization rejects wrong currency, symbol, invalid OHLCV, duplicate or shuffled timestamps',()=>{for(const mutation of [p=>p.meta.currency='EUR',p=>p.meta.symbol='MSFT',p=>p.values[0].high='1',p=>p.values[0].volume='',p=>p.values.push({...p.values[0]}),p=>p.meta.exchange='London']){const p=candlePayload();mutation(p);assert.throws(()=>normalizeCandles(p,'AAPL','5min'));}});
+test('quota and malformed provider failures honest',async()=>{mode='quota';const res=await marketApi(req('search?q=quota'),env);assert.equal(res.status,429);assert.equal(res.headers.get('retry-after'),'60');mode='bad';assert.equal((await marketApi(req('search?q=broken'),env)).status,502);mode='ok';});
+test('local request admission includes cache hits and returns 429',async()=>{let res;for(let i=0;i<31;i++)res=await marketApi(req('search?q=apple'),env);assert.equal(res.status,429);assert.equal(res.headers.get('retry-after'),'60');});

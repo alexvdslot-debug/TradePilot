@@ -1,0 +1,29 @@
+# Integrated review lessons — 2026-10-10
+
+- Session invalidation must guard both reads and writes. A successful response from a PUT/PATCH started before logout must never repopulate private state or profile data. Reproduced with a deferred feature PUT followed by `resetFeatures()`.
+- Clearing in-memory private state must also remove already-rendered private DOM immediately. Returning early from an epoch-invalidated loader does not sanitize the visible page.
+- Worker-hosted ESM must serve `.mjs` as JavaScript. A unit test checking only `main.js` does not prove that its complete import graph boots in a browser with `nosniff` enabled.
+- Normalize or redirect app entry and trailing-slash screen routes before serving relative assets. `/app` resolves `./main.js` outside `/app/`; `/app/portfolio/` needs deliberate handling.
+- Exercise the actual logout click and capture page errors: referencing an out-of-scope response inside the event handler can pass syntax and API tests.
+- Review evidence: `npm test` passed 81/81 on the initial integrated snapshot; direct Worker fetch reproduced `.mjs` MIME and trailing-route defects. The requested `~/.Codex/rules/security.md` file is absent; only `default.rules` exists in that directory.
+
+## Fix verification
+
+- Repeated the deferred PUT fixture after the generation fix: private state remains null after an obsolete success. Direct Worker fixtures now redirect `/app` and `/app/portfolio/` to canonical routes and serve all three `.mjs` dependencies with JavaScript MIME.
+- Error cleanup must tolerate authentication invalidating state during an awaited write. A margin-toggle fixture that resets state and throws 401 currently reaches a catch handler that reads `state.preferences`, causing an unhandled TypeError. Use optional state/access and avoid touching detached controls.
+- A session generation guard does not serialize settings reads against writes within the same session. Reloading the profile during PATCH can populate an old form and enable it before the save completes; the confirmed save version must stay paired with the corresponding visible form values.
+
+## Final scoped review
+
+- Margin expiry fixture now completes without rejection and private state remains null. Cleanup guards both cleared state and detached controls.
+- Settings reload now exits during an active write; the reload button is disabled throughout PATCH and restored in `finally`. This removes the reviewed concurrent reload/save path.
+- All blockers reported in this scoped review have been addressed. Browser verification remains owned by the parent agent; this review uses read-only source inspection and local deterministic fixtures, with no production identity or external mutations.
+
+## Fixes and test-environment discovery
+- Fixed module MIME and redirected entry/trailing-slash routes; regression test covers the whole import graph and direct routes.
+- Added auth-generation checks to every account request and state-save epoch checks; successful pre-logout responses are discarded. Private screens and open overlays are sanitized immediately.
+- Browser tests must use the actual same-origin topology. Serving the real Worker CSP while mocking a cross-origin development API blocks requests before the mock can fulfill them. Localhost now uses its own origin and tests intercept that origin.
+- Missing test browsers are a runtime setup issue; install the pinned Chromium/WebKit builds instead of interpreting launch failures as product test failures.
+- Safari/WebKit does not consistently focus buttons on pointer click. Overlay focus restoration now explicitly remembers the invoking button instead of assuming `document.activeElement` is the invoker.
+- Disable account reload during a settings write and reject obsolete save responses. Margin error cleanup must tolerate cleared account state and detached elements.
+- Playwright's WebKit screenshot preparation inserts a temporary `body {}` inline stylesheet (`playwright-core/lib/server/screenshotter.js`), which strict CSP rightly blocks. Verify application console/CSP before screenshot preparation; generate the preview in Chromium without weakening the production CSP. WebKit keeps the same functional/CSP checks without that screenshot step.

@@ -15,7 +15,10 @@ jobs:
         with:
           node-version: '22'
       - name: Verify indicator and Worker tests
-        run: node --test pro/indicators.test.mjs worker/index.test.mjs worker/b3-settings.test.mjs
+        run: |
+          npm ci
+          npm test
+          npm run check
       - name: Check JavaScript syntax
         run: |
           node --check pro/indicators.mjs

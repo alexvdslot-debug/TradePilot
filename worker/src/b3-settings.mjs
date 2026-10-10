@@ -9,19 +9,22 @@ const allowedCurrencies=new Set(['EUR','USD']);
 const tzValid=v=>{try{new Intl.DateTimeFormat('en',{timeZone:v});return true}catch{return false}};
 const b64=s=>Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
 const parse=s=>JSON.parse(new TextDecoder().decode(b64(s)));
+const certCache=new Map();
+async function accessKeys(issuer){
+ const cached=certCache.get(issuer);if(cached&&cached.until>Date.now())return cached.keys;
+ const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),5000);
+ try{const res=await fetch(issuer+'/cdn-cgi/access/certs',{signal:controller.signal,headers:{accept:'application/json'}});if(!res.ok)throw Error('CERTS_UNAVAILABLE');const jwks=await res.json();if(!Array.isArray(jwks.keys)||jwks.keys.length>20)throw Error('INVALID_CERTS');if(certCache.size>=8)certCache.delete(certCache.keys().next().value);certCache.set(issuer,{keys:jwks.keys,until:Date.now()+60000});return jwks.keys;}finally{clearTimeout(timer)}
+}
 async function verifiedIdentity(request,env){
  if(!env.ACCESS_TEAM_DOMAIN||!env.ACCESS_AUD)return null;
  const token=request.headers.get('Cf-Access-Jwt-Assertion')||((request.headers.get('cookie')||'').match(/(?:^|;\s*)CF_Authorization=([^;]+)/)?.[1]);
- if(!token)return null;
+ if(!token||token.length>16384)return null;
  const parts=token.split('.');if(parts.length!==3)return null;
  let head,payload;try{head=parse(parts[0]);payload=parse(parts[1])}catch{return null}
  const issuer='https://'+env.ACCESS_TEAM_DOMAIN.replace(/^https?:\/\//,'').replace(/\/$/,'');
- if(head.alg!=='RS256'||typeof head.kid!=='string'||payload.iss!==issuer||!Array.isArray(payload.aud)||!payload.aud.includes(env.ACCESS_AUD)||typeof payload.sub!=='string'||!payload.sub||!Number.isFinite(payload.exp)||payload.exp<=Date.now()/1000||!Number.isFinite(payload.iat)||payload.iat>Date.now()/1000+60)return null;
+ if(head.alg!=='RS256'||typeof head.kid!=='string'||payload.iss!==issuer||!Array.isArray(payload.aud)||!payload.aud.includes(env.ACCESS_AUD)||typeof payload.sub!=='string'||!payload.sub||!Number.isFinite(payload.exp)||payload.exp<=Date.now()/1000||!Number.isFinite(payload.iat)||payload.iat>Date.now()/1000+60||(payload.nbf!==undefined&&(!Number.isFinite(payload.nbf)||payload.nbf>Date.now()/1000+60)))return null;
  try{
-  const url=issuer+'/cdn-cgi/access/certs';
-  const res=await fetch(url,{headers:{accept:'application/json'}});
-  if(!res.ok)return null;
-  const jwks=await res.json();const jwk=jwks.keys?.find(k=>k.kid===head.kid&&k.kty==='RSA'&&(!k.alg||k.alg==='RS256'));
+  const keys=await accessKeys(issuer);const jwk=keys.find(k=>k.kid===head.kid&&k.kty==='RSA'&&(!k.alg||k.alg==='RS256'));
   if(!jwk)return null;
   const key=await crypto.subtle.importKey('jwk',jwk,{name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'},false,['verify']);
   const ok=await crypto.subtle.verify('RSASSA-PKCS1-v1_5',key,b64(parts[2]),new TextEncoder().encode(parts[0]+'.'+parts[1]));
@@ -72,6 +75,6 @@ async function settingsApi(request,env){
  const next={...current,...data};
  const result=await env.DB.prepare('UPDATE user_settings SET display_name=?,locale=?,timezone=?,display_currency=?,risk_budget_eur=?,version=version+1,updated_at=datetime(\'now\') WHERE user_id=? AND version=?').bind(next.display_name,next.locale,next.timezone,next.display_currency,next.risk_budget_eur,user.id,data.version).run();
  if(!result.meta?.changes)return error('VERSION_CONFLICT',409);
- return reply({data:publicSettings(await read())});
+ return reply({data:publicSettings({...next,version:data.version+1})});
 }
 export {settingsApi,verifiedIdentity};

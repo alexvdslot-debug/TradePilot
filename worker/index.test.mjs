@@ -39,3 +39,10 @@ test('B3 same-origin app assets are served with secure CSP and no-store',async()
  const blocked=await worker.fetch(new Request('https://example.com/app/',{method:'POST'}),env);
  assert.equal(blocked.status,405);
 });
+test('direct app routes and ES modules preserve browser loading contract',async()=>{
+ for(const path of ['/app/features.mjs','/app/ledger.mjs','/app/analysis.mjs']){
+  const r=await worker.fetch(req(path),env);assert.equal(r.status,200);assert.match(r.headers.get('content-type'),/javascript/);
+ }
+ for(const path of ['/app/portfolio','/app/radar','/app/analyzer','/app/journal','/app/settings']){const r=await worker.fetch(req(path),env);assert.equal(r.status,200);assert.match(await r.text(),/main.js/);}
+ for(const path of ['/app','/app/portfolio/']){const r=await worker.fetch(req(path),env);assert.equal(r.status,302);assert.equal(new URL(r.headers.get('location')).pathname,path==='/app'?'/app/':'/app/portfolio');}
+});

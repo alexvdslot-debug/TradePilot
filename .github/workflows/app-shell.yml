@@ -2,7 +2,7 @@ name: TradePilot app shell checks
 on:
   push:
     branches: [tradepilot-pro-rebuild]
-    paths: ['app/**', 'tests/app-shell.spec.cjs', '.github/workflows/app-shell.yml']
+    paths: ['app/**', 'worker/**', 'scripts/**', 'tests/**', 'package*.json', '.github/workflows/app-shell.yml']
   workflow_dispatch:
 jobs:
   app-shell:
@@ -15,8 +15,8 @@ jobs:
       - name: Syntax check
         run: node --check app/main.js
       - name: Install Playwright
-        run: npm install --no-save @playwright/test@1.58.2
+        run: npm ci
       - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium webkit
       - name: Browser smoke tests
         run: npx playwright test --config=app/playwright.config.cjs

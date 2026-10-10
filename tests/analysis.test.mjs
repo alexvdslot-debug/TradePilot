@@ -1,0 +1,18 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {analyzeCandles,rankOpportunities,sessionVwap,riskReward,rsi,macd} from '../app/analysis.mjs';
+function fixture(interval='5min') {
+ const now=Date.parse('2026-10-09T19:00:00Z');
+ const candles=Array.from({length:40},(_,i)=>({time:new Date(now-(39-i)*parseInt(interval)*60000).toISOString(),o:100+i*.1,h:101+i*.1,l:99+i*.1,c:100+i*.1,v:10000}));
+ return {symbol:'OPEN',provider:'test',timezone:'UTC',currency:'USD',interval,candles,asOf:candles.at(-1).time,stale:false,marketSession:'regular',realtime:true,delay:0};
+}
+test('5 and 15 minute indicators deterministic',()=>{for(const interval of ['5min','15min']){const f=fixture(interval),a=analyzeCandles(f,{now:Date.parse(f.asOf)});assert.equal(a.indicators.rsi,100);assert.ok(a.indicators.macd.macd>0);assert.equal(a.indicators.relativeVolume,1);assert.equal(a.indicators.relativeVolumeKind,'intrabar_average_20');assert.ok(a.indicativeLevels.support<a.indicativeLevels.resistance);}});
+test('VWAP resets by New York session date including UTC midnight',()=>{const rows=[{time:'2026-10-08T19:00:00Z',h:100,l:100,c:100,v:100},{time:'2026-10-09T13:30:00Z',h:20,l:20,c:20,v:2},{time:'2026-10-09T13:35:00Z',h:30,l:30,c:30,v:2}];assert.equal(sessionVwap(rows),25);});
+test('unverified/stale feeds withhold scenarios and ranking',()=>{const f=fixture();for(const change of [{delay:'unverified'},{stale:true},{marketSession:'unverified'},{realtime:'unverified'}]){const a=analyzeCandles({...f,...change},{now:Date.parse(f.asOf)});assert.equal(a.status,'wait');assert.equal(a.scenario,null);assert.equal(a.score,null);assert.deepEqual(rankOpportunities([{...f,...change}],{now:Date.parse(f.asOf)}),[]);}});
+test('incomplete bars and mismatched benchmark cannot rank',()=>{const f=fixture();f.candles.splice(10,1);assert.ok(analyzeCandles(f,{now:Date.parse(f.asOf)}).reasons.includes('INCOMPLETE_INTERVALS'));const a=analyzeCandles(fixture(),{benchmark:fixture('15min'),now:Date.parse(f.asOf)});assert.equal(a.relativeStrength,null);assert.ok(a.reasons.includes('BENCHMARK_NOT_COMPARABLE'));});
+test('round trip fees and slippage lower risk reward',()=>{assert.equal(riskReward({entry:10,stop:9,target1:12,target2:14}).rr1,2);assert.equal(riskReward({entry:10,stop:9,target1:12,target2:14},{fees:.25,slippage:.25}).rr1,1);assert.throws(()=>riskReward({entry:10,stop:9,target1:12,target2:14},{fees:-1}));});
+test('flat RSI and complete MACD reference',()=>{assert.equal(rsi(Array(40).fill(10)),50);assert.deepEqual(macd(Array(40).fill(10)),{macd:0,signal:0,histogram:0});});
+test('invalid or insufficient OHLCV fails honestly',()=>{const f=fixture();f.candles[0].h=1;assert.equal(analyzeCandles(f).status,'wait');assert.equal(analyzeCandles({candles:[]}).indicators,null);});
+test('verified setup produces reproducible cost-aware scenario and ranking',()=>{const f=fixture();f.candles=f.candles.map((x,i)=>{const c=100+Math.sin(i*.9)*.4+i*.025;return {...x,o:c,h:c+.2,l:c-.3,c};});f.candles[22].h=104;const opts={now:Date.parse(f.asOf)+300000,fees:.05,slippage:.05};const a=analyzeCandles(f,opts);assert.equal(a.status,'scenario');assert.ok(a.scenario.rr1>=1.5);assert.equal(a.scenario.costs,.1);assert.ok(a.scenario.stop<a.scenario.entryZone[0]);assert.equal(rankOpportunities([f,{...f,symbol:'STALE',stale:true}],opts).length,1);const expensive=analyzeCandles(f,{...opts,fees:10});assert.equal(expensive.status,'wait');assert.ok(expensive.reasons.includes('INSUFFICIENT_REWARD_AFTER_COSTS'));});
+
+test('forming candle cannot produce actionable scenario',()=>{const f=fixture();assert.ok(analyzeCandles(f,{now:Date.parse(f.asOf)+60000}).reasons.includes('INCOMPLETE_CURRENT_BAR'));});
