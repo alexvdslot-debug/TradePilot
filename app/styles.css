@@ -42,3 +42,14 @@
  .shell{min-width:0;padding-left:12px;padding-right:12px}
  .card{min-width:0;overflow-wrap:anywhere}
 }
+
+/* B3: accessible account settings, mobile-first */
+.settings-card{max-width:650px;margin-top:22px}
+.settings-card label{display:block;margin:16px 0 7px;font-size:13px;font-weight:700;color:#40586e}
+.settings-card input,.settings-card select{display:block;width:100%;min-height:46px;padding:11px 13px;background:#fff;color:#15263d;border:1px solid #b8ccdd;border-radius:10px;font:inherit}
+.settings-card button{margin-top:18px;margin-right:10px}
+.settings-card button:disabled{opacity:.55;cursor:not-allowed}
+.settings-card #account-status,.settings-card #account-message{overflow-wrap:anywhere;line-height:1.5}
+.settings-card #account-message:not(:empty){padding:10px 0}
+.settings-card a{overflow-wrap:anywhere}
+.settings-card input:focus-visible,.settings-card select:focus-visible{outline:3px solid #55c7ed;outline-offset:2px}
