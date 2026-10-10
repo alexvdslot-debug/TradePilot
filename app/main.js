@@ -40,6 +40,8 @@ function pageContent(id){if(id==='dashboard')return dashboard();if(id==='setting
 
 const accountApi=location.hostname==='tradepilot-pro-api.alexvdslot.workers.dev'?location.origin:'https://tradepilot-pro-api.alexvdslot.workers.dev';
 let accountVersion=null;
+let profileRequestEpoch=0;
+let accountWriteInProgress=false;
 function setAccountEnabled(enabled){const form=document.getElementById('account-settings');if(form)for(const input of form.elements)input.disabled=!enabled}
 async function accountFetch(endpoint,options={}){
  const response=await fetch(accountApi+'/api/v1/'+endpoint,{credentials:'include',cache:'no-store',...options});
@@ -48,6 +50,7 @@ async function accountFetch(endpoint,options={}){
  return body.data;
 }
 async function loadAccount(){
+ const epoch=++profileRequestEpoch;
  const status=document.getElementById('account-status');if(!status)return;
  accountVersion=null;setAccountEnabled(false);status.textContent='Beveiligde instellingen laden…';
  document.getElementById('account-message').textContent='';
@@ -55,7 +58,7 @@ async function loadAccount(){
   const session=await accountFetch('session');
   if(!session.authenticated)throw Error('UNAUTHENTICATED');
   const data=await accountFetch('settings');
-  if(!document.getElementById('account-settings'))return;
+  if(epoch!==profileRequestEpoch||!document.getElementById('account-settings'))return;
   accountVersion=data.version;
   document.getElementById('profile-name').value=data.display_name;
   document.getElementById('profile-locale').value=data.locale;
@@ -66,16 +69,19 @@ async function loadAccount(){
   status.textContent='Ingelogd · instellingen geladen (versie '+data.version+')';
   setAccountEnabled(true);
  }catch(e){
+  if(epoch!==profileRequestEpoch||!document.getElementById('account-status'))return;
   if(e.status===401||e.status===403)clearAccountSettings();
   status.textContent=e.status===401?'Niet ingelogd: gebruik de beveiligde inloglink.':e.status===403?'Toegang geweigerd.':e.status===503?'Accountservice niet beschikbaar.':'Instellingen niet bereikbaar ('+e.message+'). Mogelijk blokkeert de browser cookies tussen domeinen.';
  }
 }
 async function hydrateDashboardProfile(){
+ if(accountWriteInProgress||route()==='settings')return;
+ const epoch=++profileRequestEpoch;
  try{
   const data=await accountFetch('settings');
-  applyAccountSettings(data);
+  if(epoch===profileRequestEpoch&&!accountWriteInProgress)applyAccountSettings(data);
  }catch{
-  clearAccountSettings();
+  if(epoch===profileRequestEpoch&&!accountWriteInProgress)clearAccountSettings();
  }
 }
 function bindAccountSettings(){
@@ -83,6 +89,7 @@ function bindAccountSettings(){
  document.getElementById('account-settings').onsubmit=async event=>{
   event.preventDefault();if(accountVersion===null)return;
   const payload={version:accountVersion,display_name:document.getElementById('profile-name').value.trim(),locale:document.getElementById('profile-locale').value,timezone:document.getElementById('profile-zone').value,display_currency:document.getElementById('profile-currency').value,risk_budget_eur:document.getElementById('profile-risk').value.trim().replace(',','.')};
+  accountWriteInProgress=true;++profileRequestEpoch;
   setAccountEnabled(false);document.getElementById('account-message').textContent='Opslaan…';
   try{
    const data=await accountFetch('settings',{method:'PATCH',headers:{'content-type':'application/json','x-tradepilot-csrf':'1'},body:JSON.stringify(payload)});
@@ -92,7 +99,7 @@ function bindAccountSettings(){
   }catch(e){
    document.getElementById('account-message').textContent=e.status===409?'Conflict: laad de nieuwste instellingen en probeer opnieuw.':'Opslaan mislukt: '+e.message;
    if(e.status!==409)setAccountEnabled(true);
-  }
+  }finally{accountWriteInProgress=false}
  };
  loadAccount();
 }
