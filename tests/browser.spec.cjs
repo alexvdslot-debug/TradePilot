@@ -24,7 +24,7 @@ test('scenario handles fees and rejects invalid stop',async({page})=>{
  await page.locator('#shares').fill('100');
  await page.locator('#fees').fill('4');
  await page.locator('#calculate').click();
- await expect(page.locator('#scenario')).toContainText('1,88');
+ await expect(page.locator('#scenario')).toContainText('R/R 1.88');
  await page.locator('#stop').fill('11');
  await page.locator('#calculate').click();
  await expect(page.locator('#scenario')).toContainText('Controleer de invoer');
