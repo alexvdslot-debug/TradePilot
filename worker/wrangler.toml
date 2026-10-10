@@ -11,3 +11,11 @@ workers_dev = true
 
 [vars]
 ALLOWED_ORIGIN = "https://alexvdslot-debug.github.io"
+
+# EU-jurisdiction staging database provisioned on 2026-10-10.
+# Deploy only after Cloudflare Zero Trust Access is enabled and ACCESS_AUD,
+# ACCESS_TEAM_DOMAIN are set. Without Access the B3 API returns HTTP 503.
+[[d1_databases]]
+binding = "DB"
+database_name = "tradepilot-pro-staging"
+database_id = "052feeda-74df-4a2e-923f-0a2bf1d97d08"
