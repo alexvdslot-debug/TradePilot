@@ -57,3 +57,15 @@ Core app features are built, tested and deployed. Production live ranking/alerts
 
 ## Final CI acceptance
 Final deployed codecommit3622bcbaae8761fc2e8df659f91e4cd31c5d3ec5 passed allthree workflows: app shell/browser38038651638, quality gates38038651591, generalchecks38038651603. Browserjob114174320871 completed successfully; final matrix78cases (Chromium/WebKit). Node148tests passed. Earlier completioncommiteb850927 also passed allthree workflows. Documentation-only commits after this record do not change deployed code or assets.
+
+## UX release — 10 October 2026, 08:59 UTC
+
+Core interaction repair described in UX_ACCEPTANCE_2026-10-10.md, without changing the data-rights gates or the provider deployment.
+
+- Source commit 4a78df62533eeacd4c0563467430ff9a0de0e10d.
+- Main version 1a4dae4b-5a3b-4c8b-afa0-7dfa5d0364a2, deployment 6e4e265e-369a-417e-b4ca-de14adcce384, 100% traffic.
+- Asset revision e6c7fa8d2ae6d98886f8424a475e28a32cb88c5e80ac8be696bef6b18eb1b25d; all17 downloaded modules match source bytes.
+- Node152/152; synchronized Chromium/WebKit116/116; syntax/assets/diff checks passed; integration review PASS.
+- Authenticated production verified genuine OPEN5/15 candles, automatic interval refresh, readable mobile contained scrolling, Portfolio hierarchy, search→Analyzer Enter, notifications and zero console errors. State remainedversion1; no production financial state was changed.
+- Rollback UX only: restore main8425f161-155b-4741-a23c-3a55556bcd5e, retaining current bindings and user records. Provider e77f013b-5aa6-42e2-9ce3-8de54f4c8d6b unchanged.
+- This scope does not claim every advanced older screen detail. See UX acceptance limits for chart crosshair/zoom, historical performance graphics and richer comparison work.

@@ -24,5 +24,5 @@ for(const width of [320,375,1440])test(`OHLCV chart and controls remain usable a
  await page.getByText('RSI en MACD bekijken',{exact:true}).click();await expect(page.locator('.indicator-chart')).toBeVisible();
  await page.getByText('Candlegegevens als tabel',{exact:true}).click();await expect(page.locator('.candle-figure tbody tr')).toHaveCount(40);
  const dimensions=await page.evaluate(()=>({client:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth}));expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.client+1);expect(errors).toEqual([]);
- if(info.project.name==='chromium')await page.screenshot({path:`/private/tmp/tradepilot-ux-chart-${width}.png`,fullPage:true});
+ if(info.project.name==='chromium')await page.screenshot({path:info.outputPath(`chart-${width}.png`),fullPage:true});
 });
