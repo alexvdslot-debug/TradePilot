@@ -37,3 +37,18 @@ Bronnen: `docs/TECHNISCH_BOUWPLAN_V1.md`, `docs/architecture/02-api-datamodel-co
 - Frontend heeft login- en logoutlinks op het API-domein; CI valideert de URLs.
 
 **Open acceptatierisico:** de UI wordt op een ander domein geserveerd dan de Access-beveiligde API. Cross-site `fetch(...,{credentials:'include'})` kan in Safari door third-party cookiebeleid mislukken, ook na geslaagde Access-login. De definitieve oplossing is UI en API via hetzelfde site-/originbeleid aanbieden of een expliciet veilig alternatief ontwerpen. Dit is niet end-to-end geverifieerd; B3 niet als gereed markeren totdat iPhone Safari en desktop daadwerkelijk inloggen, instellingen wijzigen, reload en uitloggen aantonen.
+
+## B3 same-origin release (10 oktober 2026)
+- De volledige lichte hoofdapp is op `https://tradepilot-pro-api.alexvdslot.workers.dev/app/` gepubliceerd, achter dezelfde Cloudflare Access-app als `/api/v1/session` en `/api/v1/settings`.
+- De Worker levert HTML, JS, CSS en SVG-assets met CSP, `no-store`, `X-Content-Type-Options` en `X-Frame-Options`.
+- De hoofdapp gebruikt voor accountverzoeken `location.origin` op dit Worker-domein; Safari heeft hierdoor geen cross-site sessiecookie meer nodig.
+- Voor PATCH is CSRF-bescherming aangescherpt: de request-Origin moet gelijk zijn aan de daadwerkelijke API-origin, met de bestaande `X-TradePilot-CSRF` header.
+- GitHub CI: `TradePilot Pro quality gates` groen op commit `70bba47`; `TradePilot app shell checks` groen op de wijziging aan de hoofdapp; legacy TradePilot checks groen op `3f97fc2`.
+- Cloudflare Worker-upload geslaagd (HTTP 200), maar **een echte iPhone-browsertest van PATCH + reload is nog nodig**. Dit document claimt geen definitieve B3-afronding.
+
+### iPhone acceptatieprocedure
+1. Open `https://tradepilot-pro-api.alexvdslot.workers.dev/app/` in Safari (zelfde domein als de beveiligde API).
+2. Open Instellingen en controleer of `Ingelogd · instellingen geladen` verschijnt.
+3. Wijzig een niet-gevoelige instelling, bijvoorbeeld de weergavenaam; druk Opslaan.
+4. Controleer `Opgeslagen in beveiligde database`, laad de pagina opnieuw en bevestig dat de wijziging behouden is.
+5. Controleer uitloggen en opnieuw inloggen. Test 401/403 en toegang vanaf een niet-geautoriseerd account in een aparte browsersessie.
