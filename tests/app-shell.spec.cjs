@@ -118,3 +118,40 @@ test('offline dashboard shows error and recovers when online',async({page,contex
 });
 
 test('small screen does not overflow',async({page})=>{await page.setViewportSize({width:320,height:850});await page.goto('http://127.0.0.1:8765/app/index.html');await expect(page.locator('.splash')).toBeHidden({timeout:5000});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true)});
+
+test('B3 account settings load, save and survive reload with verified API contract',async({page})=>{
+ const saved={display_name:'',locale:'nl-NL',timezone:'Europe/Amsterdam',display_currency:'EUR',risk_budget_eur:'100.00',version:1};
+ await page.route('https://tradepilot-pro-api.alexvdslot.workers.dev/api/v1/**',async route=>{
+  const request=route.request(),url=new URL(request.url());
+  if(url.pathname.endsWith('/session'))return route.fulfill({json:{data:{authenticated:true,settings:saved}}});
+  if(request.method()==='PATCH'){
+   expect(request.headers()['x-tradepilot-csrf']).toBe('1');
+   expect(request.postDataJSON().version).toBe(saved.version);
+   Object.assign(saved,request.postDataJSON(),{version:saved.version+1});
+  }
+  return route.fulfill({json:{data:saved}});
+ });
+ await page.goto('http://127.0.0.1:8765/app/index.html');
+ await expect(page.locator('.splash')).toBeHidden({timeout:5000});
+ await page.getByRole('button',{name:'Instellingen'}).click();
+ await expect(page.locator('#account-status')).toContainText('Ingelogd');
+ await page.locator('#profile-name').fill('Alex');
+ await page.locator('#profile-currency').selectOption('USD');
+ await page.locator('#profile-risk').fill('250.00');
+ await page.locator('#account-save').click();
+ await expect(page.locator('#account-message')).toContainText('versie 2');
+ await page.locator('#account-reload').click();
+ await expect(page.locator('#profile-name')).toHaveValue('Alex');
+ await expect(page.locator('#profile-currency')).toHaveValue('USD');
+ await expect(page.locator('#profile-risk')).toHaveValue('250.00');
+ await expect(page.locator('#account-status')).toContainText('versie 2');
+});
+test('B3 settings fail closed when session is unavailable',async({page})=>{
+ await page.route('https://tradepilot-pro-api.alexvdslot.workers.dev/api/v1/**',route=>route.fulfill({status:401,json:{error:{code:'UNAUTHENTICATED'}}}));
+ await page.goto('http://127.0.0.1:8765/app/index.html');
+ await expect(page.locator('.splash')).toBeHidden({timeout:5000});
+ await page.getByRole('button',{name:'Instellingen'}).click();
+ await expect(page.locator('#account-status')).toContainText('Niet ingelogd');
+ await expect(page.locator('#account-save')).toBeDisabled();
+ await expect(page.locator('#account-login')).toHaveAttribute('href','https://tradepilot-pro-api.alexvdslot.workers.dev/api/v1/session');
+});
