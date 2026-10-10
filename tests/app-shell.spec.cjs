@@ -35,7 +35,7 @@ test('dashboard follows B2 empty-state contract without fabricated market values
  }
  await expect(page.getByText('Nog geen bevestigde kansen')).toBeVisible();
  await expect(page.getByText('Actuele marktgegevens niet beschikbaar',{exact:false})).toBeVisible();
- await expect(page.getByText('Bron: niet verbonden',{exact:false})).toBeVisible();
+ await expect(page.getByText('Bron: niet gecontroleerd',{exact:false})).toBeVisible();
 });
 test('dashboard stays within 320px viewport',async({page})=>{
  await page.setViewportSize({width:320,height:740});
