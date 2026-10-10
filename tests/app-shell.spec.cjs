@@ -155,3 +155,21 @@ test('B3 settings fail closed when session is unavailable',async({page})=>{
  await expect(page.locator('#account-save')).toBeDisabled();
  await expect(page.locator('#account-login')).toHaveAttribute('href','https://tradepilot-pro-api.alexvdslot.workers.dev/api/v1/session');
 });
+
+test('B3 dashboard hydrates persisted display name without visiting settings',async({page})=>{
+ let profileReads=0;
+ await page.route('https://tradepilot-pro-api.alexvdslot.workers.dev/api/v1/settings',route=>{
+  profileReads++;
+  return route.fulfill({json:{data:{display_name:'Alexander',locale:'nl-NL',timezone:'Europe/Amsterdam',display_currency:'EUR',risk_budget_eur:'100.00',version:2}}});
+ });
+ await page.goto('http://127.0.0.1:8765/app/index.html');
+ await expect(page.locator('.splash')).toBeHidden({timeout:5000});
+ await expect(page.locator('#dashboard-greeting')).toContainText('Alexander');
+ expect(profileReads).toBeGreaterThan(0);
+});
+test('B3 dashboard uses neutral greeting when profile is unavailable',async({page})=>{
+ await page.route('https://tradepilot-pro-api.alexvdslot.workers.dev/api/v1/settings',route=>route.fulfill({status:401,json:{error:{code:'UNAUTHENTICATED'}}}));
+ await page.goto('http://127.0.0.1:8765/app/index.html');
+ await expect(page.locator('.splash')).toBeHidden({timeout:5000});
+ await expect(page.locator('#dashboard-greeting')).not.toContainText('Alexander');
+});
