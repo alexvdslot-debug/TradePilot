@@ -8,8 +8,20 @@ const SYMBOL=/^[A-Z][A-Z0-9.]{0,9}$/;
 const INTERVALS=new Set(['5min','15min']);
 function response(body,status=200,headers={}){return new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff',...headers}})}
 export default {async fetch(request,env){
-  const accountResponse=await settingsApi(request,env);
-  if(accountResponse)return accountResponse;
+  const apiPath=new URL(request.url).pathname;
+  if(apiPath.startsWith('/api/v1/')){
+    const origin=request.headers.get('origin');
+    const trusted=Boolean(origin&&env.ALLOWED_ORIGIN&&origin===env.ALLOWED_ORIGIN);
+    if(request.method==='OPTIONS'){
+      if(!trusted)return new Response(null,{status:403});
+      return new Response(null,{status:204,headers:{'access-control-allow-origin':origin,'access-control-allow-credentials':'true','access-control-allow-methods':'GET, PATCH, OPTIONS','access-control-allow-headers':'Content-Type, X-TradePilot-CSRF','access-control-max-age':'600','vary':'Origin'}});
+    }
+    const accountResponse=await settingsApi(request,env);
+    if(accountResponse){
+      if(trusted){accountResponse.headers.set('access-control-allow-origin',origin);accountResponse.headers.set('access-control-allow-credentials','true');accountResponse.headers.set('vary','Origin')}
+      return accountResponse;
+    }
+  }
   const url=new URL(request.url);
   const origin=request.headers.get('origin');
   const allowed=env.ALLOWED_ORIGIN;
