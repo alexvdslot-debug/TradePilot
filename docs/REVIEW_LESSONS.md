@@ -35,3 +35,5 @@
 - Playwright's WebKit screenshot preparation inserts a temporary `body {}` inline stylesheet (`playwright-core/lib/server/screenshotter.js`), which strict CSP rightly blocks. Verify application console/CSP before screenshot preparation; generate the preview in Chromium without weakening the production CSP. WebKit keeps the same functional/CSP checks without that screenshot step.
 
 - Cloudflare dashboard login is separate from the protected TradePilot Access application session; verify the actual app route rather than treating dashboard login as application access. Existing Worker secrets can be reused with an authenticated service binding without reading or copying their values.
+
+- Authenticated production smoke testing confirmed the reused provider secret works. Clear generic progress text after read-only form completion; a successful chart should not retain a processing message. Handle a one-candle chart without division by zero.
