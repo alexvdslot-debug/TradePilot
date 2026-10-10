@@ -37,3 +37,8 @@
 - Cloudflare dashboard login is separate from the protected TradePilot Access application session; verify the actual app route rather than treating dashboard login as application access. Existing Worker secrets can be reused with an authenticated service binding without reading or copying their values.
 
 - Authenticated production smoke testing confirmed the reused provider secret works. Clear generic progress text after read-only form completion; a successful chart should not retain a processing message. Handle a one-candle chart without division by zero.
+
+- Canonical CSV file reads cross an async boundary just like provider calls: capture session/version before file.text(), discard detached inputs/changed accounts, and bind confirmation to the captured preview rather than mutable global preview.
+
+- Completion review: canonical CSV reads need a session generation captured before File.text() plus a guarded confirmation closure. Tests must reload the generated Worker assets; a reused server can otherwise validate an older UI. Market-open evidence is independent of candle time and display entitlement.
+- With both header Zoeken and Breder zoeken present, browser tests must match exact accessible button names or scope to the header; substring selectors become ambiguous. The full matrix exposed this and the test locator was corrected.

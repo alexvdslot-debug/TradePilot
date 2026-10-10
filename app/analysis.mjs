@@ -1,3 +1,4 @@
+import { completedFeed, classifyCandleSession, compareHistoricalFeeds } from './market-quality.mjs';
 /**
  * TradePilot Pro deterministic indicator engine.
  * Input candles are oldest first, with numeric o,h,l,c,v and ISO time.
@@ -65,47 +66,57 @@ export function riskReward({entry,stop,target1,target2}, {fees=0,slippage=0}={})
  const costs=fees+slippage;
  return {...base,costs,riskPerShare:base.riskPerShare+costs,rr1:(target1-entry-costs)/(base.riskPerShare+costs),rr2:(target2-entry-costs)/(base.riskPerShare+costs)};
 }
-export function analyzeCandles(feed,{benchmark,fees=0,slippage=0,now=Date.now()}={}) {
+export function analyzeCandles(sourceFeed,{benchmark,fees=0,slippage=0,now=Date.now()}={}) {
  const reasons=[];
  if(![fees,slippage].every(x=>Number.isFinite(x)&&x>=0))throw Error('INVALID_COSTS');
- try{validateCandles(feed?.candles);}catch{return {status:'wait',reasons:['INVALID_OR_INCOMPLETE_CANDLES'],scenario:null,score:null,indicators:null};}
- const candles=feed.candles;
- const latest=candles.at(-1);
- const minutes=['5min','15min'].includes(feed.interval)?parseInt(feed.interval,10):null;
+ try{validateCandles(sourceFeed?.candles);}catch{return {status:'wait',reasons:['INVALID_OR_INCOMPLETE_CANDLES'],scenario:null,hypotheticalScenario:null,score:null,indicators:null};}
+ const feed=completedFeed(sourceFeed,now),candles=feed.candles;
+ try{validateCandles(candles);}catch{return {status:'wait',reasons:['INSUFFICIENT_COMPLETED_CANDLES'],scenario:null,hypotheticalScenario:null,score:null,indicators:null,droppedFormingBars:feed.droppedFormingBars};}
+ const latest=candles.at(-1),minutes=['5min','15min'].includes(feed.interval)?parseInt(feed.interval,10):null;
  if(!minutes)reasons.push('UNSUPPORTED_INTERVAL');
- if(minutes&&now<Date.parse(latest.time)+minutes*60000)reasons.push('INCOMPLETE_CURRENT_BAR');
- if(feed.stale!==false||!Number.isFinite(Date.parse(feed.asOf))||feed.asOf!==latest.time||now-Date.parse(latest.time)>2*(minutes||5)*60000||Date.parse(latest.time)>now+60000)reasons.push('STALE_OR_INVALID_TIMESTAMP');
+ if(feed.stale!==false||!Number.isFinite(Date.parse(sourceFeed.asOf))||Date.parse(sourceFeed.asOf)!==Date.parse(sourceFeed.candles.at(-1).time)||sourceFeed.candles.some(c=>Date.parse(c.time)>now+60000))reasons.push('STALE_OR_INVALID_TIMESTAMP');
  if(!feed.provider||feed.currency!=='USD'||feed.timezone!=='UTC')reasons.push('UNVERIFIED_SOURCE');
- if(feed.marketSession!=='regular'||typeof feed.delay!=='number'||feed.delay<0||feed.delay>0||feed.realtime!==true)reasons.push('UNVERIFIED_SESSION_OR_DELAY');
+ const session=classifyCandleSession(latest.time,{exchange:feed.exchange,exchangeTimezone:feed.exchangeTimezone});
+ if((feed.marketSession!=='regular'&&session.session!=='regular')||feed.delay!==0||feed.realtime!==true)reasons.push('UNVERIFIED_SESSION_OR_DELAY');
+ if(feed.entitlementVerified===true&&(!Number.isFinite(Date.parse(feed.entitlementExpiresAt))||Date.parse(feed.entitlementExpiresAt)<=now))reasons.push('ENTITLEMENT_EXPIRED');
+ if(feed.displayRights!=='verified')reasons.push('DISPLAY_RIGHTS_UNVERIFIED');
+ const current=feed.currentMarketStatus;
+ if(!current||current.state!=='open'||current.basis!=='provider_market_state'||current.exchange!==feed.exchange||!Number.isFinite(Date.parse(current.asOf))||now-Date.parse(current.asOf)>90000||Date.parse(current.asOf)>now+60000)reasons.push('CURRENT_MARKET_STATUS_UNVERIFIED');
  if(candles.length<35)reasons.push('INSUFFICIENT_MACD_HISTORY');
- if(candles.some((c,i)=>i&&sessionDate(c.time)===sessionDate(candles[i-1].time)&&Date.parse(c.time)-Date.parse(candles[i-1].time)!==(minutes||5)*60000))reasons.push('INCOMPLETE_INTERVALS');
- const values=indicators(candles); values.vwap=sessionVwap(candles); values.relativeVolumeKind='intrabar_average_20';
- const prior=candles.slice(-21,-1);
- const support=Math.min(...prior.map(c=>c.l)),resistance=Math.max(...prior.map(c=>c.h));
- const atr=candles.slice(-14).reduce((sum,c)=>sum+c.h-c.l,0)/14;
+ const gaps=candles.some((c,i)=>i&&sessionDate(c.time)===sessionDate(candles[i-1].time)&&Date.parse(c.time)-Date.parse(candles[i-1].time)!==(minutes||5)*60000);
+ if(gaps)reasons.push('INCOMPLETE_INTERVALS');
+ const values=indicators(candles);values.vwap=sessionVwap(candles);values.relativeVolumeKind='intrabar_average_20';
+ const prior=candles.slice(-21,-1),support=Math.min(...prior.map(c=>c.l)),resistance=Math.max(...prior.map(c=>c.h));
+ const ranges=candles.slice(1).map((c,i)=>Math.max(c.h-c.l,Math.abs(c.h-candles[i].c),Math.abs(c.l-candles[i].c)));
+ const atr=ranges.slice(-14).reduce((sum,x)=>sum+x,0)/14;
+ const returns=candles.slice(-15).slice(1).map((c,i)=>Math.log(c.c/candles.slice(-15)[i].c));
+ const volatility={atr,atrMethod:'simple_mean_true_range_14',atrPercent:atr/latest.c,barReturnRootMeanSquare:Math.sqrt(returns.reduce((sum,x)=>sum+x*x,0)/returns.length)};
  const trend=ema(candles.map(c=>c.c),9)>ema(candles.map(c=>c.c),21)?'up':'down';
  const momentum=latest.c/candles.at(-6).c-1;
- const liquidity={averageBarDollarVolume:prior.reduce((sum,c)=>sum+c.c*c.v,0)/prior.length};
+ const liquidity={averageBarDollarVolume:prior.reduce((sum,c)=>sum+c.c*c.v,0)/prior.length,coverage:feed.volumeCoverage||'unverified',basis:'provider_feed_only'};
  if(values.vwap===null||values.relativeVolume===null||liquidity.averageBarDollarVolume<100000)reasons.push('INSUFFICIENT_LIQUIDITY');
- let relativeStrength=null;
- if(benchmark){
-  const matching=benchmark.candles?.filter(c=>c.time>=candles.at(-6).time&&c.time<=latest.time);
-  if(benchmark.interval===feed.interval&&benchmark.asOf===feed.asOf&&benchmark.stale===false&&benchmark.marketSession==='regular'&&benchmark.realtime===true&&benchmark.delay===0&&matching?.length===6&&matching[0].time===candles.at(-6).time&&matching.at(-1).time===latest.time)relativeStrength=momentum-(matching.at(-1).c/matching[0].c-1);
-  else reasons.push('BENCHMARK_NOT_COMPARABLE');
- }
+ const comparison=benchmark?compareHistoricalFeeds(feed,benchmark,{now}):null;
+ const relativeStrength=comparison?.comparable?comparison.relativeStrength:null;
+ if(benchmark&&!comparison.comparable)reasons.push('BENCHMARK_NOT_COMPARABLE');
+ if(benchmark&&comparison.comparable&&(comparison.stale||benchmark.realtime!==true||benchmark.delay!==0||benchmark.displayRights!=='verified'))reasons.push('BENCHMARK_UNVERIFIED');
  const entry=latest.c,stop=Math.max(support,entry-2*atr);
- const target1=resistance,target2=resistance+2*atr;
+ const target1=resistance>entry?resistance:entry+2*atr,target2=Math.max(resistance+2*atr,target1+atr);
  const indicativeLevels={support,resistance,volatility:atr,entry,stop,target1,target2};
- if(!(trend==='up'&&values.macd?.histogram>0&&values.rsi<75&&entry>values.vwap&&values.relativeVolume>=1&&stop<entry&&entry<target1))reasons.push('NO_CONFIRMED_LONG_SETUP');
- let scenario=null,score=null;
- if(!reasons.length){
-  const rr=riskReward({entry,stop,target1,target2},{fees,slippage});
-  if(rr.rr1<1.5)reasons.push('INSUFFICIENT_REWARD_AFTER_COSTS');
-  else{scenario={entryZone:[entry-atr*0.1,entry],stop,target1,target2,...rr,invalidations:['CLOSE_BELOW_STOP','LOSS_OF_SESSION_VWAP','STALE_DATA'],asOf:feed.asOf,sources:[feed.provider],horizonTradingDays:[1,5]};score=rr.rr1;}
- }
  const signals={breakout:latest.c>resistance,reversal:latest.c>candles.at(-2).h&&candles.at(-2).c<candles.at(-3).c};
- return {status:scenario?'scenario':'wait',reasons,scenario,score,indicators:values,trend,momentum,relativeStrength,liquidity,indicativeLevels,signals,asOf:feed.asOf};
+ const setup=trend==='up'&&values.macd?.histogram>0&&values.rsi<75&&entry>values.vwap&&values.relativeVolume>=1&&stop<entry&&entry<target1;
+ if(!setup)reasons.push('NO_CONFIRMED_LONG_SETUP');
+ let scenario=null,score=null,hypotheticalScenario=null;
+ if(candles.length>=35&&!gaps&&atr>0&&stop<entry&&entry<target1&&target1<target2){
+  const rr=riskReward({entry,stop,target1,target2},{fees,slippage});
+  hypotheticalScenario={kind:signals.breakout?'volatility_extension':'support_resistance',actionable:false,entryZone:[Math.max(stop,entry-atr*.1),entry],stop,target1,target2,...rr,assumptions:['VERIFY_CURRENT_DATA','CONFIRM_VWAP_AND_MOMENTUM','CONFIRM_VOLUME'],invalidations:['CLOSE_BELOW_STOP','LOSS_OF_SESSION_VWAP'],asOf:feed.asOf,sources:[feed.provider],horizonTradingDays:[1,5]};
+  if(rr.rr1<1.5)reasons.push('INSUFFICIENT_REWARD_AFTER_COSTS');
+  if(!reasons.length){scenario={...hypotheticalScenario,actionable:true,invalidations:[...hypotheticalScenario.invalidations,'STALE_DATA']};score=rr.rr1;}
+ }
+ return {status:scenario?'scenario':'wait',reasons,scenario,hypotheticalScenario,score,indicators:values,trend,momentum,relativeStrength,comparison,liquidity,volatility,indicativeLevels,signals,asOf:feed.asOf,sourceAsOf:sourceFeed.asOf,droppedFormingBars:feed.droppedFormingBars,lastCandleSession:session,currentMarketStatus:current||{state:'unverified',asOf:null},descriptive:true};
 }
 export function rankOpportunities(feeds,options={}) {
  return feeds.map(feed=>({symbol:feed.symbol,...analyzeCandles(feed,options)})).filter(x=>x.status==='scenario'&&Number.isFinite(x.score)).sort((a,b)=>b.score-a.score);
+}
+export function compareHistoricalOpportunities(feeds,{benchmark,now=Date.now(),...options}={}) {
+ return feeds.map(feed=>({symbol:feed.symbol,...analyzeCandles(feed,{benchmark,now,...options})})).filter(row=>row.indicators&&(!benchmark||row.comparison?.comparable)).map(row=>({...row,comparisonBasis:'historical_descriptive',actionable:false}));
 }

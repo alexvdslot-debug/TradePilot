@@ -24,3 +24,34 @@ Lessons captured during implementation:
 - Repository code lives under `TradePilot/`, while the supplied root is a project mirror. Synced `sources/` remain untouched.
 - Reuse ledger validation for ledger identifiers. CSV import permits dots and colons in event IDs, so a narrower backend ID rule would incorrectly reject valid imports; journal and alert identifiers retain their own bounded schema.
 - Return the committed save snapshot directly. Re-reading after an atomic update could otherwise report a later writer's state as the caller's own save.
+
+## B7 journal and foreground alert contracts
+
+Journal rows may now include an optional `eventIds` array. Older rows retain their original shape. Links must refer to existing BUY/SELL ledger events for the same symbol. Duplicate links and assigning an event to multiple plans are rejected. A failed linkage validation does not advance the snapshot version or change stored state. Deleting a journal plan must leave its ledger events intact; a subsequent snapshot can deliberately omit that journal row.
+
+`app/journal.mjs` exports `validateJournalLinks(journal, events)` and `journalStatistics(journal, events, {allowMargin, method})`. Statistics use the ledger's opt-in per-sale average-cost realizations, including actual same-currency broker fees. Only executed/reviewed plans with a linked BUY/SELL cycle that closes to zero shares qualify; unlinked, planned, incomplete, and sell-before-buy cycles are excluded. An unrelated purchase still affects portfolio average cost, so accounting uses the complete ledger before attributing realized sale results to plans. Cross-currency trade fees remain separate currency balances; mixed-currency results do not produce an invented converted total or a win/loss classification. Planned entry/stop/target prices never enter realized statistics.
+
+The statistics result contains `trades`, `closedCount`, `excludedCount`, `wins`, `losses`, `breakeven`, `mixedCurrencyCount`, `winRate` (null when no classified closed trades), `netByCurrency` (EUR/USD decimal strings), and `method`. Individual trade results include `journalId`, `symbol`, `currency`, `eventIds`, `closedAt`, `netByCurrency`, and `outcome` (`profit`, `loss`, `breakeven`, or `mixed_currency`).
+
+`app/alerts.mjs` exports:
+
+- `checkAlerts(alerts, feeds, {now})`: returns `{alerts, changed, messages}`. `feeds` can be a Map, object keyed by symbol, or array. It does not fetch data or send notifications. Messages are structured with `code: 'PRICE_ALERT_TRIGGERED'` for UI translation.
+- `resetAlert(alert)`: explicit owner re-arm, clearing trigger provenance and read acknowledgement.
+- `markAlertRead(alert, {now})`: acknowledges a triggered notification; a never-triggered alert remains unchanged.
+
+Alert evaluation requires server-fetched, nonstale USD/UTC candle data with a verified source, verified boolean realtime status, numeric zero delay, and verified display rights. `entitlementVerified` must be true; verification/expiry timestamps and volume coverage must satisfy the existing `entitlementMetadata` evidence contract, including a nonexpired maximum-30-day verification period. Current market status must authoritatively confirm open trading for the same provider/exchange (`basis:'provider_market_state'`, `scope:'current_exchange_status'`, `stale:false`) with a timestamp at most 90 seconds old (and no more than 60 seconds ahead for clock skew). Historical clock classification alone cannot trigger a notification. Bars must have valid positive OHLC data, volume, canonical timestamps and contiguous intervals within a New York session date. The latest closed candle is used, must classify as regular trading, and may be at most two intervals old. Still-forming bars cannot produce a trigger. Threshold comparisons are inclusive (`above >=`, `below <=`) and use scaled integers. A trigger disables the alert and stores `triggeredAt`, nullable `readAt`, and `triggerPrice`/`triggerAsOf`/`triggerSource`. Repeated evaluations do not create a second notification until an owner explicitly re-arms it.
+
+The backend accepts legacy alerts without acknowledgement/provenance fields and validates these optional fields when present. Provenance fields are all-or-none; the source is bounded plain text, price is a decimal string, and observation/read timestamps must be logically consistent with the trigger. No background delivery, browser permission request, email, push, or broker execution is introduced.
+
+B7 lessons:
+
+- Per-plan P&L must reuse full-portfolio accounting, since unrelated lots affect the average cost allocated to a linked sale. Per-plan replay would give misleading results.
+- Cross-currency broker fees prevent a defensible scalar win/loss classification without historical FX; preserve separate currency results instead.
+- A newest candle may still be forming. Evaluate the previous completed candle rather than using the provisional close or discarding an otherwise reliable feed.
+- Overnight gaps are expected; validate contiguous intervals within a trading session date rather than rejecting an entire multi-day feed.
+- Schema/source normalization is distinct from verified realtime entitlement or current market status. A normalized provider payload alone must not activate notifications.
+- Review correction: the initial alert gate checked realtime/delay flags but omitted explicit display rights, entitlement expiry, and authoritative current market status. Alert evaluation now reuses the market-quality entitlement, completed-bar, and historical-session helpers and independently requires current provider-confirmed open status. Unknown, expired, closed, or stale evidence leaves alerts unchanged.
+
+B7 local verification: `node --test tests/journal.test.mjs tests/alerts.test.mjs worker/private-state.test.mjs` passed 20 tests, 0 failed (6 journal, 5 alerts, 9 private-state). These are local unit/API integration checks; frontend workflows, production persistence, and production alert evaluation require separate end-to-end verification. An initial journal run preceded the ledger's pending opt-in realization extension and failed on its absent output; rerunning after that dependency became available passed all journal scenarios.
+
+Alert review correction verification: `node --test tests/alerts.test.mjs` passed **8 tests, 0 failed**, including explicit refusal for missing/expired entitlement, unverified display rights/source, unknown/closed/current status, stale status, wrong provider/exchange, and nonauthoritative clock evidence.

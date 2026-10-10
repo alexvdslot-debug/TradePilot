@@ -26,3 +26,9 @@ database_id = "052feeda-74df-4a2e-923f-0a2bf1d97d08"
 [[services]]
 binding = "MARKET_PROVIDER"
 service = "tradepilot-market-data"
+
+# Atomic shared Twelve Data quota. Provider Worker uses the same database/binding.
+[[d1_databases]]
+binding = "MARKET_QUOTA_DB"
+database_name = "tradepilot-pro-staging"
+database_id = "052feeda-74df-4a2e-923f-0a2bf1d97d08"

@@ -36,3 +36,43 @@ Lessons:
 - Reusing an existing Worker secret avoids reading/exporting or duplicating credential material.
 - Preserve observed production caching behavior when the repository proxy differs from deployed code.
 - A post-allocation text-length check does not bound memory consumption; count upstream bytes while streaming.
+
+## Historical metrics, completion and session status update
+
+Researched primary provider docs before this extension:
+- https://twelvedata.com/docs/markets/market-state — market_state costs one credit; exchange/country filters; boolean current open status. Generic exchange_schedule provides session hours but does not verify a historical holiday/early-close calendar.
+- https://support.twelvedata.com/en/articles/5195429-pre-post-market-data — UTC-normalized intraday candles refer to bar opening; extended-hours availability varies by plan and historical/live period.
+- https://support.twelvedata.com/en/articles/9935903-us-equities-market-data — general default realtime feed and partial market-volume coverage, not evidence of this account's display rights.
+- https://www.nyse.com/trade/hours-calendars — 09:30–16:00 ET core session, holiday and early-close exceptions.
+
+`app/market-quality.mjs` exports:
+- `classifyCandleSession(time,{exchange,exchangeTimezone})`: historical New York clock window; DST aware; session is regular/premarket/after-hours/closed/unverified. `calendarVerified:false` explicitly excludes holiday/early-close proof. This is not a current exchange-status claim.
+- `completedFeed(feed,now)`: removes still-forming bars based on opening+5/15-minute interval, retains `sourceAsOf`, returns last completed `asOf` and `droppedFormingBars`.
+- `compareHistoricalFeeds(feed,benchmark,{now,bars=6})`: validates OHLCV/order and aligns exact uninterrupted completed timestamps, currency and interval. Reports descriptive historical relative return even if stale/delay unknown. Incompatible windows are rejected. No actionable score is generated.
+- `entitlementMetadata(raw,now)`: validates optional owner-verified server config; never infers account permissions from candle age or general docs.
+
+Normalized backend candles now include `completedAt` and `complete`. Feed `verified:true` / `verificationBasis:'provider_schema_validation'` means source/schema validation only, not realtime/entitlement/current-price verification. `lastCandleSession` is historical. `currentMarketStatus` starts unverified. The protected `/api/v1/market/status?exchange=NASDAQ` endpoint calls the same whitelisted provider binding, caches one minute and returns `{exchange,provider,state:'open'|'closed',asOf,basis:'provider_market_state',scope:'current_exchange_status',stale:false}`. AsOf is retrieval time because market_state supplies no exchange-event timestamp. The call consumes the same bounded admission budget; no per-symbol status request is made automatically.
+
+`analyzeCandles` calculates only completed bars, adding ATR as simple mean of 14 true ranges, volatility percentages, descriptive historical benchmark comparison and `hypotheticalScenario` (actionable:false with assumptions). Existing `scenario` and `score` remain null until fresh verified realtime/no-delay data, verified display rights, current provider-reported open state, sufficient liquidity/history and technical/cost criteria all pass. `compareHistoricalOpportunities` returns descriptive rows without actionable ranking. Extended-hours clock classification does not override unknown entitlement.
+
+Optional server env `MARKET_ENTITLEMENT_JSON` contract:
+`{"provider":"Twelve Data","scope":"US_EQUITIES","evidence":"owner_account_verified","verifiedAt":"ISO","expiresAt":"ISO","realtime":true,"delayMinutes":0,"volumeCoverage":"partial","displayRights":"verified"}`.
+Expiry must be future and at most 30 days after verification. `displayRights:"unverified"` is supported and blocks actionable ranking. Actual realtime flags require owner-account evidence; display permission requires entitlement evidence applicable to this app. Default metadata has `realtime/delay/displayRights:"unverified"`; `documentedDefaultFeed` separately records generic default realtime availability and approximately 5% live market-volume share. Actual `volumeCoverage` remains unverified absent profile because historical/live feed coverage differs.
+
+Owner account inspection reported by parent: Basic8, 8/minute and 800/day; account manage-plan lists realtime US stocks/ETF and Internal non-display usage, while Grow lists Internal display. General provider support language about personal/internal tools does not settle this specific private chart display scope. No live display rights were configured. This is a permission-evidence ambiguity, not a conclusion that a paid upgrade is necessarily required. Parent will resolve licensing/account scope and distributed quota enforcement before enabling actionable production flags.
+
+Regression command: `node --test tests/analysis.test.mjs tests/market-quality.test.mjs worker/market-api.test.mjs worker/provider-adapter.test.mjs` — 29 passed, 0 failed. Covers DST sessions and calendar uncertainty, forming-bar exclusion, stale historical hypothetical scenarios, exact benchmark alignment/corruption/interval/currency/gaps, entitlement expiry, current status binding, metadata completion and prior auth/quota/normalization tests. No live entitlement claim is established by these fixtures.
+
+Lessons:
+- Historical last-bar session, present exchange open status, source-schema validation and account entitlement are four different facts; they require separate fields.
+- Drop the forming bar and use the previous completed bar; rejecting an entire otherwise-valid live feed prevents useful analysis.
+- Historical unknown-delay data can support aligned descriptive comparisons and explicitly conditional plans while actionable ranking stays blocked.
+- Treat approximately 5% default live volume as source coverage context, not consolidated market liquidity or evidence of a specific key's rights.
+
+## Fixed indicative USD→EUR endpoint
+
+Primary provider time_series/forex docs and UTC timezone support were reviewed before implementation: https://twelvedata.com/docs and https://support.twelvedata.com/en/articles/5745849-timezones . `/api/v1/market/fx` is authenticated and accepts no query parameters. It calls only `/_tradepilot/fx` through the existing secret binding, mapping to fixed `time_series?symbol=USD/EUR&interval=15min&timezone=UTC&outputsize=2&order=asc`; no US equity-country filter is sent for forex. The adapter permits no client-selected pair/endpoint/interval/key.
+
+`normalizeForex` requires exact USD/EUR, 15min, Physical Currency, EUR quote metadata (ISO EUR or Euro with USD/US Dollar base metadata), positive finite consistent OHLC, strict valid ascending UTC timestamps and a completed bar. Forex metadata may use currency_base/currency_quote rather than equity currency. The newest forming bar is skipped. Response includes string `rate`/`price`, EUR quote currency, USD base currency, provider/source, completion `asOf`, opening `barOpenedAt`, stale, interval and timezone. `verified:false`, `schemaVerified:true`, `indicative:true`, `delay/realtime/marketSession:'unverified'` keep this suitable for explicitly indicative conversion, not a verified current FX valuation. US-equity entitlement config does not imply forex entitlement.
+
+Updated targeted suite: 31 passed, 0 failed; fixed binding path/parameters, forex exclusion of country filter, exact pair/currency/type, positive OHLC, ordering, completion selection and indicative-only provenance are covered.

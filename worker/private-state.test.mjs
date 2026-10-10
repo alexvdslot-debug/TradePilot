@@ -76,3 +76,21 @@ test('database errors and corrupted stored state return structured service error
  const corrupt=await privateStateApi(request(),env);assert.equal(corrupt.status,503);assert.equal((await corrupt.json()).error.code,'DATABASE_ERROR');
  const failure=await privateStateApi(request(),{...env,DB:{prepare(){throw Error('secret database detail')}}});assert.equal(failure.status,503);assert.equal((await failure.json()).error.message,'DATABASE_ERROR');
 });
+test('journal linkage persists with legacy compatibility, ownership isolation and version checks',async()=>{
+ const env=environment();const events=[{id:'d',type:'DEPOSIT',currency:'USD',amount:'100',timestamp:'2026-10-01T12:00:00Z'},{id:'b',type:'BUY',currency:'USD',symbol:'OPEN',quantity:'1',price:'2',timestamp:'2026-10-01T12:01:00Z'},{id:'s',type:'SELL',currency:'USD',symbol:'OPEN',quantity:'1',price:'3',timestamp:'2026-10-01T12:02:00Z'}];
+ const row={id:'j',symbol:'OPEN',createdAt:'2026-10-01T12:00:00Z',thesis:'Plan',entry:'2',stop:'1',target1:'3',target2:'4',status:'reviewed',evaluation:'Completed',eventIds:['b','s']};
+ const snapshot={...initial(),events,journal:[row]};
+ assert.equal((await privateStateApi(request('A',snapshot),env)).status,200);
+ assert.deepEqual((await (await privateStateApi(request('A'),env)).json()).data.journal[0].eventIds,['b','s']);
+ assert.equal((await privateStateApi(request('A',snapshot),env)).status,409);
+ assert.deepEqual((await (await privateStateApi(request('B'),env)).json()).data.journal,[]);
+ for(const journal of [[{...row,eventIds:['missing']}],[{...row,eventIds:['d']}],[{...row,eventIds:['b','b']}],[{...row,symbol:'AAPL'}],[row,{...row,id:'j2'}]])assert.equal((await privateStateApi(request('A',{...snapshot,version:2,journal}),env)).status,400);
+ assert.equal((await (await privateStateApi(request('A'),env)).json()).data.version,2);
+});
+test('alert read acknowledgement and trigger provenance validate without losing legacy rows',async()=>{
+ const env=environment();const legacy={id:'legacy',symbol:'OPEN',direction:'above',price:'3',enabled:true,triggeredAt:null};
+ const triggered={id:'a',symbol:'OPEN',direction:'above',price:'3',enabled:false,triggeredAt:'2026-10-01T14:35:00Z',readAt:'2026-10-01T14:36:00Z',triggerPrice:'3.1',triggerAsOf:'2026-10-01T14:30:00Z',triggerSource:'Twelve Data'};
+ assert.equal((await privateStateApi(request('A',{...initial(),alerts:[legacy,triggered]}),env)).status,200);
+ assert.deepEqual((await (await privateStateApi(request('A'),env)).json()).data.alerts,[legacy,triggered]);
+ for(const invalid of [{...triggered,readAt:'bad'},{...triggered,triggerAsOf:'2026-10-01T14:40:00Z'},{...triggered,triggerSource:'<script>'},{...legacy,readAt:'2026-10-01T14:36:00Z'},{...triggered,triggerPrice:undefined}])assert.equal((await privateStateApi(request('A',{...initial(),version:2,alerts:[invalid]}),env)).status,400);
+});

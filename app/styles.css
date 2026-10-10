@@ -58,3 +58,6 @@
 
 .brand-pro{color:#2388b9}
 .form-grid label[hidden]{display:none}
+
+/* Completion workflows retain accessible native controls at narrow widths. */
+.mapping-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px}.mapping-grid label{min-width:0}.mapping-grid select{max-width:100%}details>summary{cursor:pointer;min-height:44px;padding:12px 0;font-weight:700;line-height:1.5}.comparison-detail{border-top:1px solid var(--line);margin-top:12px}.scenario-summary{padding:16px;background:#f3f8fc;border:1px solid var(--line);border-radius:12px;margin-top:18px}.scenario-summary h3{margin-top:0}.search-result{display:block;width:100%;min-height:44px;text-align:left;color:var(--ink);font:inherit;margin:10px 0}.journal-list select[multiple]{min-height:120px}.journal-list option{padding:10px}.indicator-grid strong{display:block;margin-top:6px}@media(max-width:620px){.mapping-grid{grid-template-columns:1fr}}

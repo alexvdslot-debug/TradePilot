@@ -64,9 +64,10 @@ const balances = () => ({ EUR: 0n, USD: 0n });
 const serialize = values => Object.fromEntries(Object.entries(values).map(([key, value]) => [key, format(value)]));
 
 /** Average cost, rounded down to 12 decimals on partial allocation; remainder stays in inventory. */
-export function calculateLedger(events, { allowMargin = false, method = 'average', quotes = {} } = {}) {
+export function calculateLedger(events, { allowMargin = false, method = 'average', quotes = {}, includeRealizations = false } = {}) {
   if (!Array.isArray(events) || events.length > MAX_LEDGER_EVENTS) fail('EVENT_LIMIT');
   if (typeof allowMargin !== 'boolean') fail('INVALID_MARGIN_SETTING');
+  if (typeof includeRealizations !== 'boolean') fail('INVALID_REALIZATIONS_SETTING');
   if (method !== 'average') fail('UNSUPPORTED_COST_METHOD');
   // Quote valuation is intentionally unavailable until freshness and FX contracts are implemented.
   void quotes;
@@ -74,6 +75,7 @@ export function calculateLedger(events, { allowMargin = false, method = 'average
   const ids = new Set();
   const cash = balances(), realized = balances(), deposits = balances(), withdrawals = balances(), fees = balances(), financing = balances(), margin = balances();
   const positions = new Map();
+  const tradeRealizations = [];
   for (const { event } of ordered) {
     if (ids.has(event.id)) fail('DUPLICATE_EVENT_ID');
     ids.add(event.id);
@@ -100,6 +102,7 @@ export function calculateLedger(events, { allowMargin = false, method = 'average
         position.costBasis -= allocated;
         position.realized += result;
         realized[curr] += result;
+        if (includeRealizations) tradeRealizations.push({ eventId: event.id, symbol: event.symbol, currency: curr, realized: format(result) });
         cash[curr] += gross;
       }
     } else if (event.type === 'DEPOSIT') {
@@ -128,6 +131,7 @@ export function calculateLedger(events, { allowMargin = false, method = 'average
     cash: serialize(cash),
     positions: [...positions.values()].sort((a, b) => a.symbol.localeCompare(b.symbol)).map(position => ({ symbol: position.symbol, currency: position.currency, quantity: format(position.quantity), averageCost: format(position.quantity ? position.costBasis * SCALE / position.quantity : 0n), costBasis: format(position.costBasis), realized: format(position.realized), unrealized: null })),
     realized: serialize(realized), deposits: serialize(deposits), withdrawals: serialize(withdrawals), fees: serialize(fees), financing: serialize(financing), margin: serialize(margin), method, valuationComplete: false,
+    ...(includeRealizations ? { tradeRealizations } : {}),
   };
 }
 

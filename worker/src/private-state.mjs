@@ -1,10 +1,12 @@
 import {verifiedIdentity} from './b3-settings.mjs';
 import {calculateLedger,validateEvent} from '../../app/ledger.mjs';
+import {validateJournalLinks} from '../../app/journal.mjs';
 
 const MAX_BYTES=200000;
 const reply=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
 const error=(code,status)=>reply({error:{code,message:code,retryable:status>=500}},status);
 const exact=(value,keys)=>value!==null&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).length===keys.length&&keys.every(key=>Object.hasOwn(value,key));
+const withOptional=(value,required,optional)=>value!==null&&typeof value==='object'&&!Array.isArray(value)&&required.every(key=>Object.hasOwn(value,key))&&Object.keys(value).every(key=>required.includes(key)||optional.includes(key));
 const text=(value,max)=>typeof value==='string'&&value.length<=max&&!/[<>\u0000-\u0008\u000b-\u001f\u007f]/.test(value);
 const id=value=>typeof value==='string'&&/^[A-Za-z0-9_-]{1,100}$/.test(value);
 const symbol=value=>typeof value==='string'&&/^[A-Z][A-Z0-9.-]{0,9}$/.test(value);
@@ -20,11 +22,14 @@ function validateState(data){
  if(!Array.isArray(data.watchlist)||data.watchlist.length>50||!data.watchlist.every(symbol)||!unique(data.watchlist))throw Error('INVALID_WATCHLIST');
  if(!Array.isArray(data.journal)||data.journal.length>500||!unique(data.journal.map(row=>row?.id)))throw Error('INVALID_JOURNAL');
  for(const row of data.journal){
-  if(!exact(row,['id','symbol','createdAt','thesis','entry','stop','target1','target2','status','evaluation'])||!id(row.id)||!symbol(row.symbol)||!iso(row.createdAt)||!text(row.thesis,4000)||!text(row.evaluation,4000)||!['planned','executed','reviewed'].includes(row.status)||!['entry','stop','target1','target2'].every(key=>price(row[key])))throw Error('INVALID_JOURNAL');
+  if(!withOptional(row,['id','symbol','createdAt','thesis','entry','stop','target1','target2','status','evaluation'],['eventIds'])||!id(row.id)||!symbol(row.symbol)||!iso(row.createdAt)||!text(row.thesis,4000)||!text(row.evaluation,4000)||!['planned','executed','reviewed'].includes(row.status)||!['entry','stop','target1','target2'].every(key=>price(row[key])))throw Error('INVALID_JOURNAL');
  }
  if(!Array.isArray(data.alerts)||data.alerts.length>50||!unique(data.alerts.map(row=>row?.id)))throw Error('INVALID_ALERTS');
  for(const row of data.alerts){
-  if(!exact(row,['id','symbol','direction','price','enabled','triggeredAt'])||!id(row.id)||!symbol(row.symbol)||!['above','below'].includes(row.direction)||!price(row.price)||typeof row.enabled!=='boolean'||!(row.triggeredAt===null||iso(row.triggeredAt)))throw Error('INVALID_ALERTS');
+  if(!withOptional(row,['id','symbol','direction','price','enabled','triggeredAt'],['readAt','triggerPrice','triggerAsOf','triggerSource'])||!id(row.id)||!symbol(row.symbol)||!['above','below'].includes(row.direction)||!price(row.price)||typeof row.enabled!=='boolean'||!(row.triggeredAt===null||iso(row.triggeredAt)))throw Error('INVALID_ALERTS');
+  if(row.readAt!==undefined&&!(row.readAt===null||iso(row.readAt)&&row.triggeredAt!==null&&Date.parse(row.readAt)>=Date.parse(row.triggeredAt)))throw Error('INVALID_ALERTS');
+  const provenance=['triggerPrice','triggerAsOf','triggerSource'];
+  if(provenance.some(key=>Object.hasOwn(row,key))&&(!provenance.every(key=>Object.hasOwn(row,key))||row.triggeredAt===null||!price(row.triggerPrice)||!iso(row.triggerAsOf)||Date.parse(row.triggerAsOf)>Date.parse(row.triggeredAt)||!text(row.triggerSource,80)||!row.triggerSource))throw Error('INVALID_ALERTS');
  }
  if(!Array.isArray(data.events)||data.events.length>2000)throw Error('INVALID_LEDGER');
  try{
@@ -34,6 +39,7 @@ function validateState(data){
   }
   calculateLedger(data.events,{allowMargin:data.preferences.allowMargin,method:data.preferences.costMethod});
  }catch{throw Error('INVALID_LEDGER')}
+ try{validateJournalLinks(data.journal,data.events)}catch{throw Error('INVALID_JOURNAL_LINKS')}
  return data;
 }
 

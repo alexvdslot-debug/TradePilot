@@ -7,7 +7,7 @@ test('splash animates bars, exits and navigation works',async({page})=>{
  await expect(page.getByRole('heading',{name:/Goedemorgen|Goedemiddag|Goedenavond|Goedenacht/})).toBeVisible();
  await page.getByRole('navigation',{name:'Hoofdnavigatie'}).first().getByText('Kansen').click();
  await expect(page.getByRole('heading',{name:'Kansenradar'})).toBeVisible();
- await page.getByRole('button',{name:'Zoeken'}).click();
+ await page.getByRole('button',{name:'Zoeken',exact:true}).click();
  await expect(page.getByRole('dialog',{name:'Zoeken'})).toBeVisible();
  await page.keyboard.press('Escape');
  await expect(page.getByRole('dialog',{name:'Zoeken'})).toHaveCount(0);
@@ -66,10 +66,10 @@ test('dashboard has no horizontal overflow at 375px and desktop',async({page})=>
 test('search and notification overlays restore keyboard focus',async({page})=>{
  await page.goto('http://127.0.0.1:8765/app/index.html');
  await expect(page.locator('.splash')).toBeHidden({timeout:5000});
- await page.getByRole('button',{name:'Zoeken'}).click();
+ await page.getByRole('button',{name:'Zoeken',exact:true}).click();
  await expect(page.locator('#search-input')).toBeFocused();
  await page.keyboard.press('Escape');
- await expect(page.getByRole('button',{name:'Zoeken'})).toBeFocused();
+ await expect(page.getByRole('button',{name:'Zoeken',exact:true})).toBeFocused();
  await page.getByRole('button',{name:'Meldingen'}).click();
  await expect(page.getByRole('dialog',{name:'Meldingen'})).toBeVisible();
  await page.keyboard.press('Escape');
@@ -83,7 +83,7 @@ test('keyboard shortcut opens search and Escape restores focus',async({page})=>{
  await expect(page.getByRole('dialog',{name:'Zoeken'})).toBeVisible();
  await expect(page.locator('#search-input')).toBeFocused();
  await page.keyboard.press('Escape');
- await expect(page.getByRole('button',{name:'Zoeken'})).toBeFocused();
+ await expect(page.getByRole('button',{name:'Zoeken',exact:true})).toBeFocused();
 });
 
 test('dashboard greeting follows actual New York browser timezone',async({browser})=>{
@@ -103,7 +103,7 @@ test('dashboard greeting follows actual New York browser timezone',async({browse
 test('dialog makes the background inert and restores it on Escape',async({page})=>{
  await page.goto('http://127.0.0.1:8765/app/index.html');
  await expect(page.locator('.splash')).toBeHidden({timeout:5000});
- await page.getByRole('button',{name:'Zoeken'}).click();
+ await page.getByRole('button',{name:'Zoeken',exact:true}).click();
  await expect(page.locator('.shell')).toHaveAttribute('inert','');
  await page.keyboard.press('Escape');
  await expect(page.locator('.shell')).not.toHaveAttribute('inert','');
