@@ -42,3 +42,4 @@
 
 - Completion review: canonical CSV reads need a session generation captured before File.text() plus a guarded confirmation closure. Tests must reload the generated Worker assets; a reused server can otherwise validate an older UI. Market-open evidence is independent of candle time and display entitlement.
 - With both header Zoeken and Breder zoeken present, browser tests must match exact accessible button names or scope to the header; substring selectors become ambiguous. The full matrix exposed this and the test locator was corrected.
+- Production smoke found a cash-only account also needs the FX refresh action. Enable quote/FX reads without equity positions; show FX source/time and keep unknown realtime rights indicative. Format historical entry ranges and display their calculated hypothetical risk/reward separately from actionable scenarios.
