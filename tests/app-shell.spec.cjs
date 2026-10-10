@@ -191,3 +191,12 @@ test('B3 profile name cannot inject markup in greeting',async({page})=>{
  await expect(page.locator('#dashboard-greeting')).toContainText('<img');
  await expect(page.locator('#dashboard-greeting img')).toHaveCount(0);
 });
+
+test('mobile navigation renders SVG icons rather than raw symbol identifiers',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('http://127.0.0.1:8765/app/index.html');
+ await expect(page.locator('.splash')).toBeHidden({timeout:5000});
+ await expect(page.locator('.bottom .tab')).toHaveCount(5);
+ await expect(page.locator('.bottom .tab svg.ui-icon')).toHaveCount(5);
+ await expect(page.locator('.bottom .tab').first()).not.toContainText('home');
+});
