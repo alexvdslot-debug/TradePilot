@@ -17,3 +17,7 @@ Spread, symbol-specific halts and corporate actions require actual provider cont
 ## Lessons
 
 Report software completion and provider activation separately. Do not say a provider is unavailable without testing its current connector. A logged-in account and a working key still do not prove all datasets or usage rights required by a product. Mark a feature complete only with evidence of the requested behavior, not by treating unfinished implementation as an external dependency.
+
+## Delivered after this audit
+
+The background engine is now implemented and deployed inactive: native five-minute scheduling, private service RPC, owner opt-in, atomic shared quota reservation, exclusive lease, fair cursor, one-shot persisted notices, and optimistic owner-safe writes. Invalid symbols do not starve later owners. A conservative New York weekday 09:35–16:00 window prevents off-hours budget waste; provider-open evidence remains required. These are completed software capabilities, not external prerequisites. Real activation still requires verified entitlement and both server switches, and external Web Push remains outside this stored-notice implementation.
